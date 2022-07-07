@@ -1,6 +1,0 @@
-
-Files already downloaded and verified
-/scratch/noelt/envs/osr/lib64/python3.6/site-packages/torch/nn/functional.py:718: UserWarning: Named tensors and all their associated APIs are an experimental feature and subject to change. Please do not use them for anything important until they are released as stable. (Triggered internally at  /pytorch/c10/core/TensorImpl.h:1156.)
-  return torch.max_pool2d(input, kernel_size, stride, padding, dilation, ceil_mode)
-Train Epoch: 0 [0/50000 (0%)]	Loss: 0.034698
-Train Epoch: 0 [25600/50000 (51%)]	Loss: 0.028318
