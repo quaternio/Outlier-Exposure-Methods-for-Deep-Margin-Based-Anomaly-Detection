@@ -1,0 +1,97 @@
+2022-07-07 09:48:48,136 INFO    MainThread:243809 [internal.py:wandb_internal():93] W&B internal server running at pid: 243809, started at: 2022-07-07 09:48:48.134456
+2022-07-07 09:48:48,138 INFO    WriterThread:243809 [datastore.py:open_for_write():75] open: /nfs/stak/users/noelt/Documents/Project/Large_Margin_Loss_PyTorch-master/wandb/run-20220707_094847-3mlho7tt/run-3mlho7tt.wandb
+2022-07-07 09:48:48,143 DEBUG   SenderThread:243809 [sender.py:send():236] send: header
+2022-07-07 09:48:48,143 DEBUG   SenderThread:243809 [sender.py:send():236] send: run
+2022-07-07 09:48:48,327 DEBUG   HandlerThread:243809 [handler.py:handle_request():140] handle_request: check_version
+2022-07-07 09:48:48,339 INFO    SenderThread:243809 [dir_watcher.py:__init__():216] watching files in: /nfs/stak/users/noelt/Documents/Project/Large_Margin_Loss_PyTorch-master/wandb/run-20220707_094847-3mlho7tt/files
+2022-07-07 09:48:48,341 INFO    SenderThread:243809 [sender.py:_start_run_threads():818] run started: 3mlho7tt with start time 1657212527
+2022-07-07 09:48:48,342 DEBUG   SenderThread:243809 [sender.py:send():236] send: summary
+2022-07-07 09:48:48,346 INFO    SenderThread:243809 [sender.py:_save_file():952] saving file wandb-summary.json with policy end
+2022-07-07 09:48:48,347 DEBUG   SenderThread:243809 [sender.py:send_request():250] send_request: check_version
+2022-07-07 09:48:48,487 DEBUG   HandlerThread:243809 [handler.py:handle_request():140] handle_request: run_start
+2022-07-07 09:48:49,346 INFO    Thread-7  :243809 [dir_watcher.py:_on_file_created():269] file/dir created: /nfs/stak/users/noelt/Documents/Project/Large_Margin_Loss_PyTorch-master/wandb/run-20220707_094847-3mlho7tt/files/wandb-summary.json
+2022-07-07 09:48:50,512 DEBUG   HandlerThread:243809 [meta.py:__init__():35] meta init
+2022-07-07 09:48:50,513 DEBUG   HandlerThread:243809 [meta.py:__init__():49] meta init done
+2022-07-07 09:48:50,513 DEBUG   HandlerThread:243809 [meta.py:probe():209] probe
+2022-07-07 09:48:50,524 DEBUG   HandlerThread:243809 [git.py:repo():29] git repository is invalid
+2022-07-07 09:48:50,524 DEBUG   HandlerThread:243809 [meta.py:_save_pip():53] save pip
+2022-07-07 09:48:50,529 DEBUG   HandlerThread:243809 [meta.py:_save_pip():67] save pip done
+2022-07-07 09:48:50,529 DEBUG   HandlerThread:243809 [meta.py:probe():247] probe done
+2022-07-07 09:48:50,544 DEBUG   SenderThread:243809 [sender.py:send():236] send: files
+2022-07-07 09:48:50,544 INFO    SenderThread:243809 [sender.py:_save_file():952] saving file wandb-metadata.json with policy now
+2022-07-07 09:48:50,579 DEBUG   HandlerThread:243809 [handler.py:handle_request():140] handle_request: stop_status
+2022-07-07 09:48:50,580 DEBUG   SenderThread:243809 [sender.py:send_request():250] send_request: stop_status
+2022-07-07 09:48:50,591 DEBUG   HandlerThread:243809 [handler.py:handle_request():140] handle_request: pause
+2022-07-07 09:48:50,591 INFO    HandlerThread:243809 [handler.py:handle_request_pause():695] stopping system metrics thread
+2022-07-07 09:48:50,691 DEBUG   SenderThread:243809 [sender.py:send():236] send: telemetry
+2022-07-07 09:48:50,691 DEBUG   SenderThread:243809 [sender.py:send():236] send: stats
+2022-07-07 09:48:51,048 INFO    Thread-11 :243809 [upload_job.py:push():138] Uploaded file /tmp/tmp45csoeiowandb/13me3kxy-wandb-metadata.json
+2022-07-07 09:48:51,345 INFO    Thread-7  :243809 [dir_watcher.py:_on_file_created():269] file/dir created: /nfs/stak/users/noelt/Documents/Project/Large_Margin_Loss_PyTorch-master/wandb/run-20220707_094847-3mlho7tt/files/requirements.txt
+2022-07-07 09:48:51,346 INFO    Thread-7  :243809 [dir_watcher.py:_on_file_created():269] file/dir created: /nfs/stak/users/noelt/Documents/Project/Large_Margin_Loss_PyTorch-master/wandb/run-20220707_094847-3mlho7tt/files/wandb-metadata.json
+2022-07-07 09:48:51,347 INFO    Thread-7  :243809 [dir_watcher.py:_on_file_created():269] file/dir created: /nfs/stak/users/noelt/Documents/Project/Large_Margin_Loss_PyTorch-master/wandb/run-20220707_094847-3mlho7tt/files/output.log
+2022-07-07 09:48:51,892 DEBUG   HandlerThread:243809 [handler.py:handle_request():140] handle_request: resume
+2022-07-07 09:48:51,892 INFO    HandlerThread:243809 [handler.py:handle_request_resume():686] starting system metrics thread
+2022-07-07 09:48:51,895 DEBUG   HandlerThread:243809 [handler.py:handle_request():140] handle_request: pause
+2022-07-07 09:48:51,895 INFO    HandlerThread:243809 [handler.py:handle_request_pause():695] stopping system metrics thread
+2022-07-07 09:48:52,020 DEBUG   SenderThread:243809 [sender.py:send():236] send: stats
+2022-07-07 09:48:54,627 DEBUG   HandlerThread:243809 [handler.py:handle_request():140] handle_request: resume
+2022-07-07 09:48:54,627 INFO    HandlerThread:243809 [handler.py:handle_request_resume():686] starting system metrics thread
+2022-07-07 09:48:55,881 DEBUG   HandlerThread:243809 [handler.py:handle_request():140] handle_request: pause
+2022-07-07 09:48:55,881 INFO    HandlerThread:243809 [handler.py:handle_request_pause():695] stopping system metrics thread
+2022-07-07 09:48:55,998 DEBUG   SenderThread:243809 [sender.py:send():236] send: stats
+2022-07-07 09:48:56,995 DEBUG   HandlerThread:243809 [handler.py:handle_request():140] handle_request: resume
+2022-07-07 09:48:56,995 INFO    HandlerThread:243809 [handler.py:handle_request_resume():686] starting system metrics thread
+2022-07-07 09:48:57,355 INFO    Thread-7  :243809 [dir_watcher.py:_on_file_modified():286] file/dir modified: /nfs/stak/users/noelt/Documents/Project/Large_Margin_Loss_PyTorch-master/wandb/run-20220707_094847-3mlho7tt/files/output.log
+2022-07-07 09:49:01,366 INFO    Thread-7  :243809 [dir_watcher.py:_on_file_modified():286] file/dir modified: /nfs/stak/users/noelt/Documents/Project/Large_Margin_Loss_PyTorch-master/wandb/run-20220707_094847-3mlho7tt/files/output.log
+2022-07-07 09:49:03,370 INFO    Thread-7  :243809 [dir_watcher.py:_on_file_modified():286] file/dir modified: /nfs/stak/users/noelt/Documents/Project/Large_Margin_Loss_PyTorch-master/wandb/run-20220707_094847-3mlho7tt/files/output.log
+2022-07-07 09:49:05,375 INFO    Thread-7  :243809 [dir_watcher.py:_on_file_modified():286] file/dir modified: /nfs/stak/users/noelt/Documents/Project/Large_Margin_Loss_PyTorch-master/wandb/run-20220707_094847-3mlho7tt/files/output.log
+2022-07-07 09:49:05,694 DEBUG   HandlerThread:243809 [handler.py:handle_request():140] handle_request: stop_status
+2022-07-07 09:49:05,695 DEBUG   SenderThread:243809 [sender.py:send_request():250] send_request: stop_status
+2022-07-07 09:49:09,383 INFO    Thread-7  :243809 [dir_watcher.py:_on_file_modified():286] file/dir modified: /nfs/stak/users/noelt/Documents/Project/Large_Margin_Loss_PyTorch-master/wandb/run-20220707_094847-3mlho7tt/files/output.log
+2022-07-07 09:49:09,728 WARNING MainThread:243809 [internal.py:wandb_internal():153] Internal process interrupt: 1
+2022-07-07 09:49:10,094 DEBUG   HandlerThread:243809 [handler.py:handle_request():140] handle_request: pause
+2022-07-07 09:49:10,094 INFO    HandlerThread:243809 [handler.py:handle_request_pause():695] stopping system metrics thread
+2022-07-07 09:49:10,219 DEBUG   SenderThread:243809 [sender.py:send():236] send: stats
+2022-07-07 09:49:19,408 INFO    Thread-7  :243809 [dir_watcher.py:_on_file_modified():286] file/dir modified: /nfs/stak/users/noelt/Documents/Project/Large_Margin_Loss_PyTorch-master/wandb/run-20220707_094847-3mlho7tt/files/config.yaml
+2022-07-07 09:49:20,828 DEBUG   HandlerThread:243809 [handler.py:handle_request():140] handle_request: stop_status
+2022-07-07 09:49:20,828 DEBUG   SenderThread:243809 [sender.py:send_request():250] send_request: stop_status
+2022-07-07 09:49:35,949 DEBUG   HandlerThread:243809 [handler.py:handle_request():140] handle_request: stop_status
+2022-07-07 09:49:35,950 DEBUG   SenderThread:243809 [sender.py:send_request():250] send_request: stop_status
+2022-07-07 09:49:51,098 DEBUG   HandlerThread:243809 [handler.py:handle_request():140] handle_request: stop_status
+2022-07-07 09:49:51,099 DEBUG   SenderThread:243809 [sender.py:send_request():250] send_request: stop_status
+2022-07-07 09:50:06,252 DEBUG   HandlerThread:243809 [handler.py:handle_request():140] handle_request: stop_status
+2022-07-07 09:50:06,253 DEBUG   SenderThread:243809 [sender.py:send_request():250] send_request: stop_status
+2022-07-07 09:50:21,376 DEBUG   HandlerThread:243809 [handler.py:handle_request():140] handle_request: stop_status
+2022-07-07 09:50:21,376 DEBUG   SenderThread:243809 [sender.py:send_request():250] send_request: stop_status
+2022-07-07 09:50:36,496 DEBUG   HandlerThread:243809 [handler.py:handle_request():140] handle_request: stop_status
+2022-07-07 09:50:36,497 DEBUG   SenderThread:243809 [sender.py:send_request():250] send_request: stop_status
+2022-07-07 09:50:51,653 DEBUG   HandlerThread:243809 [handler.py:handle_request():140] handle_request: stop_status
+2022-07-07 09:50:51,654 DEBUG   SenderThread:243809 [sender.py:send_request():250] send_request: stop_status
+2022-07-07 09:51:06,783 DEBUG   HandlerThread:243809 [handler.py:handle_request():140] handle_request: stop_status
+2022-07-07 09:51:06,784 DEBUG   SenderThread:243809 [sender.py:send_request():250] send_request: stop_status
+2022-07-07 09:51:21,908 DEBUG   HandlerThread:243809 [handler.py:handle_request():140] handle_request: stop_status
+2022-07-07 09:51:21,909 DEBUG   SenderThread:243809 [sender.py:send_request():250] send_request: stop_status
+2022-07-07 09:51:37,035 DEBUG   HandlerThread:243809 [handler.py:handle_request():140] handle_request: stop_status
+2022-07-07 09:51:37,035 DEBUG   SenderThread:243809 [sender.py:send_request():250] send_request: stop_status
+2022-07-07 09:51:52,168 DEBUG   HandlerThread:243809 [handler.py:handle_request():140] handle_request: stop_status
+2022-07-07 09:51:52,169 DEBUG   SenderThread:243809 [sender.py:send_request():250] send_request: stop_status
+2022-07-07 09:52:06,032 WARNING MainThread:243809 [internal.py:wandb_internal():153] Internal process interrupt: 2
+2022-07-07 09:52:06,032 ERROR   MainThread:243809 [internal.py:wandb_internal():156] Internal process interrupted.
+2022-07-07 09:52:06,138 INFO    HandlerThread:243809 [handler.py:finish():806] shutting down handler
+2022-07-07 09:52:06,139 INFO    WriterThread:243809 [datastore.py:close():279] close: /nfs/stak/users/noelt/Documents/Project/Large_Margin_Loss_PyTorch-master/wandb/run-20220707_094847-3mlho7tt/run-3mlho7tt.wandb
+2022-07-07 09:52:06,139 DEBUG   SenderThread:243809 [sender.py:send():236] send: telemetry
+2022-07-07 09:52:06,140 INFO    SenderThread:243809 [sender.py:finish():1114] shutting down sender
+2022-07-07 09:52:06,140 INFO    SenderThread:243809 [dir_watcher.py:finish():353] shutting down directory watcher
+2022-07-07 09:52:06,441 INFO    SenderThread:243809 [dir_watcher.py:finish():383] scan: /nfs/stak/users/noelt/Documents/Project/Large_Margin_Loss_PyTorch-master/wandb/run-20220707_094847-3mlho7tt/files
+2022-07-07 09:52:06,442 INFO    SenderThread:243809 [dir_watcher.py:finish():397] scan save: /nfs/stak/users/noelt/Documents/Project/Large_Margin_Loss_PyTorch-master/wandb/run-20220707_094847-3mlho7tt/files/config.yaml config.yaml
+2022-07-07 09:52:06,442 INFO    SenderThread:243809 [dir_watcher.py:finish():397] scan save: /nfs/stak/users/noelt/Documents/Project/Large_Margin_Loss_PyTorch-master/wandb/run-20220707_094847-3mlho7tt/files/wandb-metadata.json wandb-metadata.json
+2022-07-07 09:52:06,443 INFO    SenderThread:243809 [dir_watcher.py:finish():397] scan save: /nfs/stak/users/noelt/Documents/Project/Large_Margin_Loss_PyTorch-master/wandb/run-20220707_094847-3mlho7tt/files/requirements.txt requirements.txt
+2022-07-07 09:52:06,452 INFO    SenderThread:243809 [dir_watcher.py:finish():397] scan save: /nfs/stak/users/noelt/Documents/Project/Large_Margin_Loss_PyTorch-master/wandb/run-20220707_094847-3mlho7tt/files/output.log output.log
+2022-07-07 09:52:06,453 INFO    SenderThread:243809 [dir_watcher.py:finish():397] scan save: /nfs/stak/users/noelt/Documents/Project/Large_Margin_Loss_PyTorch-master/wandb/run-20220707_094847-3mlho7tt/files/wandb-summary.json wandb-summary.json
+2022-07-07 09:52:06,470 INFO    SenderThread:243809 [file_pusher.py:finish():171] shutting down file pusher
+2022-07-07 09:52:06,471 INFO    SenderThread:243809 [file_pusher.py:join():176] waiting for file pusher
+2022-07-07 09:52:06,940 INFO    Thread-15 :243809 [upload_job.py:push():138] Uploaded file /nfs/stak/users/noelt/Documents/Project/Large_Margin_Loss_PyTorch-master/wandb/run-20220707_094847-3mlho7tt/files/config.yaml
+2022-07-07 09:52:06,943 INFO    Thread-16 :243809 [upload_job.py:push():138] Uploaded file /nfs/stak/users/noelt/Documents/Project/Large_Margin_Loss_PyTorch-master/wandb/run-20220707_094847-3mlho7tt/files/requirements.txt
+2022-07-07 09:52:07,004 INFO    Thread-18 :243809 [upload_job.py:push():138] Uploaded file /nfs/stak/users/noelt/Documents/Project/Large_Margin_Loss_PyTorch-master/wandb/run-20220707_094847-3mlho7tt/files/wandb-summary.json
+2022-07-07 09:52:07,010 INFO    Thread-17 :243809 [upload_job.py:push():138] Uploaded file /nfs/stak/users/noelt/Documents/Project/Large_Margin_Loss_PyTorch-master/wandb/run-20220707_094847-3mlho7tt/files/output.log
+2022-07-07 09:52:07,575 INFO    MainThread:243809 [internal.py:handle_exit():80] Internal process exited
