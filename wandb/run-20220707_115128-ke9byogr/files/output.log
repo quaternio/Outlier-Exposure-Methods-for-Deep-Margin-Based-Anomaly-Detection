@@ -1,0 +1,18 @@
+
+Files already downloaded and verified
+Train Epoch: 0 [0/50000 (0%)]	Loss: -0.001253
+Epoch 1 took 4.08387017250061 seconds to complete
+Test set: Accuracy: 248/10000 (2%)
+Files already downloaded and verified
+Train Epoch: 0 [0/50000 (0%)]	Loss: -0.001241
+Epoch 1 took 4.089224100112915 seconds to complete
+Test set: Accuracy: 279/10000 (3%)
+True
+True
+True
+True
+Train Epoch: 0 [0/50000 (0%)]	Loss: -0.000383
+Epoch 1 took 4.941572189331055 seconds to complete
+Test set: Accuracy: 258/10000 (3%)
+False
+Files already downloaded and verified

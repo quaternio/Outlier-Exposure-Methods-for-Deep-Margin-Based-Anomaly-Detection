@@ -1,0 +1,12 @@
+
+Files already downloaded and verified
+torch.Size([256, 256, 8, 8])
+torch.Size([256, 512, 4, 4])
+torch.Size([256, 1024, 2, 2])
+torch.Size([256, 2048, 1, 1])
+torch.Size([256, 1000])
+torch.Size([256, 100])
+torch.Size([256, 100])
+<AddmmBackward0 object at 0x7f87bdcfab00>
+<CudnnConvolutionBackward0 object at 0x7f87bdcfab00>
+torch.Size([256, 100])

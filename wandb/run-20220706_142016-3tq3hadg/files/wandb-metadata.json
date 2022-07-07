@@ -1,0 +1,18 @@
+{
+    "os": "Linux-3.10.0-1160.66.1.el7.x86_64-x86_64-with-centos-7.9.2009-Core",
+    "python": "3.6.8",
+    "heartbeatAt": "2022-07-06T21:20:18.729206",
+    "startedAt": "2022-07-06T21:20:16.826884",
+    "docker": null,
+    "gpu": "Tesla V100-PCIE-16GB",
+    "gpu_count": 2,
+    "cpu_count": 80,
+    "cuda": null,
+    "args": null,
+    "state": "running",
+    "program": "resnet_cifar_100-jvsc-5d8298c6-b29a-481a-ad37-1ddc0822e498.ipynb",
+    "root": "/nfs/stak/users/noelt/Documents/Project/Large_Margin_Loss_PyTorch-master",
+    "host": "anomaly.eecs.oregonstate.edu",
+    "username": "noelt",
+    "executable": "/nfs/stak/users/noelt/Documents/Project/Large_Margin_Loss_PyTorch-master/envs/project/bin/python3"
+}

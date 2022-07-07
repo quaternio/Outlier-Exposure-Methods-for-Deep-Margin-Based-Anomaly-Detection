@@ -1,0 +1,14 @@
+
+Files already downloaded and verified
+torch.Size([256, 100])
+torch.Size([256])
+torch.Size([256, 256, 8, 8])
+tensor(0.0036, device='cuda:0', grad_fn=<SelectBackward0>)
+torch.Size([256, 16384])
+tensor(0.0014, device='cuda:0')
+torch.Size([256, 100])
+torch.Size([256])
+torch.Size([256, 512, 4, 4])
+tensor(0., device='cuda:0', grad_fn=<SelectBackward0>)
+torch.Size([256, 8192])
+tensor(-0.0003, device='cuda:0')
