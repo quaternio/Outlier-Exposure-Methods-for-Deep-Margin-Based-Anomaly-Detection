@@ -52,7 +52,7 @@ training_class_indices = list(range(num_training_classes))
 # Get indices of "evaluation classes", which is a subset of the training
 # classes. Basically, the evaluation classes are our true ID classes, and the
 # training classes are a mix of ID classes and other "auxiliary" classes.
-num_evaluation_classes = 10
+num_evaluation_classes = 10 # These are your ID classes
 evaluation_class_indices = list(range(num_evaluation_classes))
 
 # Filter the ID data to only include the training classes. They're already

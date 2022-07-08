@@ -71,6 +71,7 @@ class LargeMarginLoss:
         correct_prob = torch.sum(correct_prob, dim=1, keepdim=True)
         other_prob = prob * (1.0 - onehot_labels)
         
+        # Grabs the next most likely class probabilities
         if self.top_k > 1:
             topk_prob, _ = other_prob.topk(self.top_k, dim=1)
         else:

@@ -175,7 +175,19 @@ def main():
                         help="Which loss function to use ('CE' or 'margin_#')", default="CE")
     parser.add_argument("-d", "--detection_type", type=str, 
                         help="Which type of anomaly detection to use ('KS' or 'LS')", type=str)
-    
+    parser.add_argument("-t", "--test", action="store_true", 
+                        help="Indicates that we wish to test instead of validate model.")
+    parser.add_argument("-i", "--num_id_classes", type=int, default=10,
+                        help="The number of in-distribution classes to use during training")
+    parser.add_argument("-o", "--num_oe_classes", type=int, default=10,
+                        help="Number of classes used for outlier exposure during training.")
+    parser.add_argument("--num_novel_val_classes", type=int, default=10,
+                        help="Number of unseen outlier classes in validation set")
+    parser.add_argument("--num_novel_test_classes", type=int, default=70,
+                        help="Number of unseen outlier classes in test data")
+    parser.add_ar
+
+    # TODO: Finish adding arguments; start instrumenting for weights and biases sweep
     args = parser.parse_args()
 
     # if args.architecture == 'resnet50':
