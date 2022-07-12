@@ -5,7 +5,7 @@ import torch
 device = torch.device("cuda")
 import torch.nn.functional as F
 import wandb
-from torchvision.models import resnet18, resnet34, resnet50
+from torchvision.models import resnet18, resnet34, resnet50, efficientnet_b1
 from torch.utils import data
 from torchvision import datasets
 from torchvision import transforms
@@ -87,6 +87,16 @@ def _init_resnet_50(output_size, pretrained = False, features_hook = None):
 
     return model
 
+def _init_efficientnet_b1(output_size, pretrained = False, features_hook = None):
+    model = efficientnet_b1(pretrained=pretrained)
+    model.classifier = torch.nn.Linear(1280, output_size)
+    if features_hook is not None:
+        for name, module in model.named_modules():
+            if name in ['features.0', 'features.1', 'features.2', 'features.3', 'features.4', 'features.5', 'features.6', 'features.7', 'features.8',]:
+                module.register_forward_hook(features_hook)
+
+    return model
+
 def create_pretrained_model(architecture, n_classes, features_hook = None):
     pretrained = True
     if 'resnet18' in architecture:
@@ -95,6 +105,8 @@ def create_pretrained_model(architecture, n_classes, features_hook = None):
         net = _init_resnet_34(n_classes, pretrained, features_hook)
     elif 'resnet50' in architecture:
         net = _init_resnet_50(n_classes, pretrained, features_hook)
+    elif 'efficientnet_b1' in architecture:
+        net = _init_efficientnet_b1(n_classes, pretrained, features_hook)
     else:
         raise NotImplementedError()
 
@@ -108,6 +120,8 @@ def create_model(architecture, n_classes, features_hook = None):
         net = _init_resnet_34(n_classes, pretrained, features_hook)
     elif 'resnet50' in architecture:
         net = _init_resnet_50(n_classes, pretrained, features_hook)
+    elif 'efficientnet_b1' in architecture:
+        net = _init_efficientnet_b1(n_classes, pretrained, features_hook)
     else:
         raise NotImplementedError()
 
@@ -138,11 +152,11 @@ class FeatureExtractor(torch.nn.Module):
     def clear_features(self):
         self._features = []
 
-def train_lm(model, train_loader, optimizer, epoch, lm):
+def train_lm(model, train_loader, optimizer, epoch, lm, num_classes):
     model.train()
     for batch_idx, (data, target) in enumerate(train_loader):
         data = data.to(device)
-        one_hot = torch.zeros(len(target), 100).scatter_(1, target.unsqueeze(1), 1.).float()
+        one_hot = torch.zeros(len(target), num_classes).scatter_(1, target.unsqueeze(1), 1.).float()
         one_hot = one_hot.cuda()
         optimizer.zero_grad()
         output, features = model(data)
@@ -164,6 +178,25 @@ def train_lm(model, train_loader, optimizer, epoch, lm):
                 epoch, batch_idx * len(data), len(train_loader.dataset),
                 100. * batch_idx / len(train_loader), loss.item()))
 
+
+def train_ce(model, train_loader, optimizer, epoch):
+    model.train()
+    for batch_idx, (data, target) in enumerate(train_loader):
+        data, target = data.to(device), target.to(device)
+        optimizer.zero_grad()
+        output, _ = model(data)
+        model.clear_features()
+
+        loss = F.cross_entropy(output, target)
+        
+        loss.backward()
+        optimizer.step()
+        if batch_idx % 100 == 0:
+            print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
+                epoch, batch_idx * len(data), len(train_loader.dataset),
+                100. * batch_idx / len(train_loader), loss.item()))
+
+
 def learn(args):
     pass
 
@@ -177,15 +210,17 @@ def main():
     parser.add_argument("-l", "--loss", type=str, 
                         help="Which loss function to use ('CE' or 'margin_#')", default="CE")
     parser.add_argument("-d", "--detection_type", type=str, 
-                        help="Which type of anomaly detection to use ('KS' or 'LS')", type=str)
+                        help="Which type of anomaly detection to use ('KS' or 'LS')")
     parser.add_argument("-t", "--test", action="store_true", 
                         help="Indicates that we wish to test instead of validate model.")
-    parser.add_argument("-o", "--optimizer", type=str, default="sgd")
-    parser.add_argument("--learning_rate", type=float, default=0.001)
+    parser.add_argument("-o", "--optimizer", type=str, default="SGD")
+    parser.add_argument("--learning_rate", type=float, default=0.003)
     parser.add_argument("-m", "--momentum", type=float, default=0.9)
     parser.add_argument("-b", "--batch_size", type=int, default=256)
     parser.add_argument("-s", "--split", type=int, default=0)
-    parser.add_argument("-e", "--num_epochs", type=int, default=5)
+    parser.add_argument("-e", "--num_epochs", type=int, default=50)
+    parser.add_argument("--top_k", type=int, default=1)
+    parser.add_argument("--dist_norm", type=str, default="2")
     # TODO: Finish adding arguments; start instrumenting for weights and biases sweep
     args = parser.parse_args()
 
@@ -197,16 +232,19 @@ def main():
 
     wandb.config = {
         "learning_rate": args.learning_rate,
-        "epochs": args.epochs,
+        "epochs": args.num_epochs,
         "batch_size": args.batch_size,
         "network": args.architecture
     }
+
+    norm_dict = {"1": 1, "2": 2, "inf": np.inf}
 
     split = args.split
     learning_rate = args.learning_rate
     epochs = args.num_epochs
     batch_size = args.batch_size
     net_type = args.architecture
+    dist_norm = norm_dict[args.dist_norm]
 
     # Hard-coded for now. To change, re-generate splits via random_split_generator.py
     num_training_classes = 10
@@ -226,23 +264,23 @@ def main():
     ood_train_data, ood_val_data, ood_test_data = ood_data
 
     # Constructing Dataloaders
-
     id_train_loader = data.DataLoader(id_train_data, batch_size=batch_size, shuffle=True, drop_last=True)
     id_val_loader   = data.DataLoader(id_val_data, batch_size=batch_size, shuffle=True, drop_last=True)
     id_test_loader   = data.DataLoader(id_test_data, batch_size=batch_size, shuffle=True, drop_last=True)
     ood_train_loader   = data.DataLoader(ood_train_data, batch_size=batch_size, shuffle=True, drop_last=True)
     ood_val_loader   = data.DataLoader(ood_val_data, batch_size=batch_size, shuffle=True, drop_last=True)
-    ood_test_loader   = data.DataLoader(id_test_data, batch_size=batch_size, shuffle=True, drop_last=True)
+    ood_test_loader   = data.DataLoader(ood_test_data, batch_size=batch_size, shuffle=True, drop_last=True)
 
     #################
     # LOSS FUNCTION #
     #################
-    lm = LargeMarginLoss(
-        gamma=10000,
-        alpha_factor=4,
-        top_k=num_training_classes,
-        dist_norm=np.inf
-    )
+    if "margin" in args.loss:
+        lm = LargeMarginLoss(
+            gamma=10000,
+            alpha_factor=4,
+            top_k=args.top_k,
+            dist_norm=dist_norm #np.inf
+        )
 
     net = FeatureExtractor(net_type, num_training_classes)
     net.to(device)
@@ -251,10 +289,22 @@ def main():
     # kitchen sink configuration. (The number of classes will just be 
     # num_training_classes+1)
 
-    optim = Adam(net.parameters()) #SGD(net.parameters(), lr=learning_rate, momentum=0)
+    if args.optimizer == "SGD":
+        optim = SGD(net.parameters(), lr=learning_rate, momentum=args.momentum)
+    elif args.optimizer == "ADAM":
+        optim = Adam(net.parameters())
+    else:
+        raise NotImplementedError("Specified Optimizer Not Supported")
+
     for i in range(0, epochs):
         start_time = time.time()
-        train_lm(net, id_train_loader, optim, i, lm)
+        if "margin" in args.loss:
+            train_lm(net, id_train_loader, optim, i, lm, num_training_classes)
+        elif args.loss == "CE":
+            train_ce(net, id_train_loader, optim, i)
+        else:
+            raise NotImplementedError("Specified Optimizer Not Supported")
+
         end_time = time.time()
 
         print('Epoch {} took {} seconds to complete'.format(i+1, end_time-start_time))

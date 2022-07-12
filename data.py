@@ -35,6 +35,7 @@ import pickle as pkl
 import numpy as np
 import copy
 
+from torchvision import transforms
 import torchutil.data
 import torchutil
 from adtools.data.split import ClassSplit
@@ -59,6 +60,10 @@ def build_split_datasets(split):
     # Map ID labels and OOD labels to [0, 1, 2, ...]
     id_train_dataset = torchutil.data.TransformingDataset(
         id_train_dataset,
+        transform=transforms.Compose([
+            transforms.ToTensor(),
+            transforms.Normalize(mean=[0.485,0.456,0.406], std=[0.229, 0.224, 0.225])
+        ]),
         target_transform = torchutil.data.LabelMappingTransform(
             label_list = id_ood_split.id_labels()
         )
@@ -73,6 +78,10 @@ def build_split_datasets(split):
 
     id_test_dataset = torchutil.data.TransformingDataset(
         id_test_dataset,
+        transform=transforms.Compose([
+            transforms.ToTensor(),
+            transforms.Normalize(mean=[0.485,0.456,0.406], std=[0.229, 0.224, 0.225])
+        ]),
         target_transform = torchutil.data.LabelMappingTransform(
             label_list = id_ood_split.id_labels()
         )
@@ -80,6 +89,10 @@ def build_split_datasets(split):
 
     ood_train_dataset = torchutil.data.TransformingDataset(
         ood_train_dataset,
+        transform=transforms.Compose([
+            transforms.ToTensor(),
+            transforms.Normalize(mean=[0.485,0.456,0.406], std=[0.229, 0.224, 0.225])
+        ]),
         target_transform = torchutil.data.LabelMappingTransform(
             label_list = id_ood_split.ood_train_labels()
         )
@@ -87,6 +100,10 @@ def build_split_datasets(split):
 
     ood_val1_dataset = torchutil.data.TransformingDataset(
         ood_val1_dataset,
+        transform=transforms.Compose([
+            transforms.ToTensor(),
+            transforms.Normalize(mean=[0.485,0.456,0.406], std=[0.229, 0.224, 0.225])
+        ]),
         target_transform = torchutil.data.LabelMappingTransform(
             label_list = id_ood_split.ood_val_labels()
         )
@@ -94,6 +111,10 @@ def build_split_datasets(split):
 
     ood_test1_dataset = torchutil.data.TransformingDataset(
         ood_test1_dataset,
+        transform=transforms.Compose([
+            transforms.ToTensor(),
+            transforms.Normalize(mean=[0.485,0.456,0.406], std=[0.229, 0.224, 0.225])
+        ]),
         target_transform = torchutil.data.LabelMappingTransform(
             label_list = id_ood_split.ood_test_labels()
         )
@@ -101,6 +122,10 @@ def build_split_datasets(split):
 
     ood_val2_dataset = torchutil.data.TransformingDataset(
         ood_val2_dataset,
+        transform=transforms.Compose([
+            transforms.ToTensor(),
+            transforms.Normalize(mean=[0.485,0.456,0.406], std=[0.229, 0.224, 0.225])
+        ]),
         target_transform = torchutil.data.LabelMappingTransform(
             label_list = id_ood_split.ood_val_labels()
         )
@@ -108,10 +133,49 @@ def build_split_datasets(split):
 
     ood_test2_dataset = torchutil.data.TransformingDataset(
         ood_test2_dataset,
+        transform=transforms.Compose([
+            transforms.ToTensor(),
+            transforms.Normalize(mean=[0.485,0.456,0.406], std=[0.229, 0.224, 0.225])
+        ]),
         target_transform = torchutil.data.LabelMappingTransform(
             label_list = id_ood_split.ood_test_labels()
         )
     )
+
+    # Specifying transforms
+    # id_train_dataset.dataset.transform = transforms.Compose([
+    #     transforms.ToTensor(),
+    #     transforms.Normalize(mean=[0.485,0.456,0.406], std=[0.229, 0.224, 0.225])
+    # ])
+    # id_val_dataset.dataset.transform = transforms.Compose([
+    #     transforms.ToTensor(),
+    #     transforms.Normalize(mean=[0.485,0.456,0.406], std=[0.229, 0.224, 0.225])
+    # ])
+    # id_test_dataset.dataset.transform = transforms.Compose([
+    #     transforms.ToTensor(),
+    #     transforms.Normalize(mean=[0.485,0.456,0.406], std=[0.229, 0.224, 0.225])
+    # ])
+
+    # ood_train_dataset.dataset.transform = transforms.Compose([
+    #     transforms.ToTensor(),
+    #     transforms.Normalize(mean=[0.485,0.456,0.406], std=[0.229, 0.224, 0.225])
+    # ])
+    # ood_val1_dataset.dataset.transform = transforms.Compose([
+    #     transforms.ToTensor(),
+    #     transforms.Normalize(mean=[0.485,0.456,0.406], std=[0.229, 0.224, 0.225])
+    # ])
+    # ood_test1_dataset.dataset.transform = transforms.Compose([
+    #     transforms.ToTensor(),
+    #     transforms.Normalize(mean=[0.485,0.456,0.406], std=[0.229, 0.224, 0.225])
+    # ])
+    # ood_val2_dataset.dataset.transform = transforms.Compose([
+    #     transforms.ToTensor(),
+    #     transforms.Normalize(mean=[0.485,0.456,0.406], std=[0.229, 0.224, 0.225])
+    # ])
+    # ood_test2_dataset.dataset.transform = transforms.Compose([
+    #     transforms.ToTensor(),
+    #     transforms.Normalize(mean=[0.485,0.456,0.406], std=[0.229, 0.224, 0.225])
+    # ])
 
     ood_val_dataset  = ConcatDataset([ood_val1_dataset, ood_val2_dataset])
     ood_test_dataset = ConcatDataset([ood_test1_dataset, ood_test2_dataset])
