@@ -5,6 +5,7 @@ import torch
 device = torch.device("cuda")
 import torch.nn.functional as F
 import wandb
+import copy
 from torchvision.models import resnet18, resnet34, resnet50, efficientnet_b1
 from torch.utils import data
 from torchvision import datasets
@@ -18,6 +19,8 @@ import argparse
 from data import build_split_datasets
 import pickle as pkl
 from random_split_generator import FourWayClassSplit
+from train_eval import train_ce_ks, train_ce_ls, train_lm
+from torch.utils.data import ConcatDataset
 
 def test(model, test_loader):
     model.eval()
@@ -147,55 +150,10 @@ class FeatureExtractor(torch.nn.Module):
 
     def forward(self, x):
         logits = self.model(x)
-        return logits, self._features
+        return logits, copy.deepcopy(self._features)
 
     def clear_features(self):
         self._features = []
-
-def train_lm(model, train_loader, optimizer, epoch, lm, num_classes):
-    model.train()
-    for batch_idx, (data, target) in enumerate(train_loader):
-        data = data.to(device)
-        one_hot = torch.zeros(len(target), num_classes).scatter_(1, target.unsqueeze(1), 1.).float()
-        one_hot = one_hot.cuda()
-        optimizer.zero_grad()
-        output, features = model(data)
-        for feature in features:
-            feature.retain_grad()
-
-        loss = lm(output, one_hot, features)
-        
-        wandb.log({"loss": loss})
-        # optional
-        wandb.watch(model)
-        
-        loss.backward()
-        optimizer.step()
-        model.clear_features()
-        
-        if batch_idx % 100 == 0:
-            print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
-                epoch, batch_idx * len(data), len(train_loader.dataset),
-                100. * batch_idx / len(train_loader), loss.item()))
-
-
-def train_ce(model, train_loader, optimizer, epoch):
-    model.train()
-    for batch_idx, (data, target) in enumerate(train_loader):
-        data, target = data.to(device), target.to(device)
-        optimizer.zero_grad()
-        output, _ = model(data)
-        model.clear_features()
-
-        loss = F.cross_entropy(output, target)
-        
-        loss.backward()
-        optimizer.step()
-        if batch_idx % 100 == 0:
-            print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
-                epoch, batch_idx * len(data), len(train_loader.dataset),
-                100. * batch_idx / len(train_loader), loss.item()))
-
 
 def learn(args):
     pass
@@ -208,9 +166,9 @@ def main():
                         help="Which architecture to use", default="resnet18")
     parser.add_argument("-p", "--pretrained", action="store_true")
     parser.add_argument("-l", "--loss", type=str, 
-                        help="Which loss function to use ('CE' or 'margin_#')", default="CE")
+                        help="Which loss function to use ('CE' or 'margin')", default="CE")
     parser.add_argument("-d", "--detection_type", type=str, 
-                        help="Which type of anomaly detection to use ('KS' or 'LS')")
+                        help="Which type of anomaly detection to use ('KS' or 'LS')", default="LS")
     parser.add_argument("-t", "--test", action="store_true", 
                         help="Indicates that we wish to test instead of validate model.")
     parser.add_argument("-o", "--optimizer", type=str, default="SGD")
@@ -248,6 +206,7 @@ def main():
 
     # Hard-coded for now. To change, re-generate splits via random_split_generator.py
     num_training_classes = 10
+    num_total_classes = 100
 
     # Getting split definition
     with open('id-ood-splits/split{}.pkl'.format(split), 'rb') as f:
@@ -255,6 +214,10 @@ def main():
 
     # Any label not in id_labels is OOD
     id_labels = id_ood_split.id_labels()
+    id_label_map = {}
+    for label in range(num_total_classes):
+        if label in id_labels:
+            id_label_map[label] = True
 
     # Right now, hardcoded to use CIFAR-100, with hardcoded splits
     # defined and generated in random_split_generator.py
@@ -274,7 +237,7 @@ def main():
     #################
     # LOSS FUNCTION #
     #################
-    if "margin" in args.loss:
+    if args.loss == "margin":
         lm = LargeMarginLoss(
             gamma=10000,
             alpha_factor=4,
@@ -282,7 +245,12 @@ def main():
             dist_norm=dist_norm #np.inf
         )
 
-    net = FeatureExtractor(net_type, num_training_classes)
+    if args.detection_type == "LS":
+        net = FeatureExtractor(net_type, num_training_classes)
+    elif args.detection_type == "KS":
+        # Include a kitchen sink class
+        net = FeatureExtractor(net_type, num_training_classes+1)
+
     net.to(device)
 
     # Data and Net accounted for; Note that net will need to be modified later for 
@@ -298,10 +266,10 @@ def main():
 
     for i in range(0, epochs):
         start_time = time.time()
-        if "margin" in args.loss:
-            train_lm(net, id_train_loader, optim, i, lm, num_training_classes)
-        elif args.loss == "CE":
-            train_ce(net, id_train_loader, optim, i)
+        if args.loss == "margin":
+            train_lm(net, id_train_loader, ood_train_loader, optim, i, lm, num_training_classes, id_label_map, device)
+        elif args.loss == "CE" and args.detection_type == "LS":
+            train_ce_ls(net, id_train_loader, ood_train_loader, optim, i, id_label_map, device)
         else:
             raise NotImplementedError("Specified Optimizer Not Supported")
 

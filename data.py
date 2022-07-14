@@ -142,41 +142,6 @@ def build_split_datasets(split):
         )
     )
 
-    # Specifying transforms
-    # id_train_dataset.dataset.transform = transforms.Compose([
-    #     transforms.ToTensor(),
-    #     transforms.Normalize(mean=[0.485,0.456,0.406], std=[0.229, 0.224, 0.225])
-    # ])
-    # id_val_dataset.dataset.transform = transforms.Compose([
-    #     transforms.ToTensor(),
-    #     transforms.Normalize(mean=[0.485,0.456,0.406], std=[0.229, 0.224, 0.225])
-    # ])
-    # id_test_dataset.dataset.transform = transforms.Compose([
-    #     transforms.ToTensor(),
-    #     transforms.Normalize(mean=[0.485,0.456,0.406], std=[0.229, 0.224, 0.225])
-    # ])
-
-    # ood_train_dataset.dataset.transform = transforms.Compose([
-    #     transforms.ToTensor(),
-    #     transforms.Normalize(mean=[0.485,0.456,0.406], std=[0.229, 0.224, 0.225])
-    # ])
-    # ood_val1_dataset.dataset.transform = transforms.Compose([
-    #     transforms.ToTensor(),
-    #     transforms.Normalize(mean=[0.485,0.456,0.406], std=[0.229, 0.224, 0.225])
-    # ])
-    # ood_test1_dataset.dataset.transform = transforms.Compose([
-    #     transforms.ToTensor(),
-    #     transforms.Normalize(mean=[0.485,0.456,0.406], std=[0.229, 0.224, 0.225])
-    # ])
-    # ood_val2_dataset.dataset.transform = transforms.Compose([
-    #     transforms.ToTensor(),
-    #     transforms.Normalize(mean=[0.485,0.456,0.406], std=[0.229, 0.224, 0.225])
-    # ])
-    # ood_test2_dataset.dataset.transform = transforms.Compose([
-    #     transforms.ToTensor(),
-    #     transforms.Normalize(mean=[0.485,0.456,0.406], std=[0.229, 0.224, 0.225])
-    # ])
-
     ood_val_dataset  = ConcatDataset([ood_val1_dataset, ood_val2_dataset])
     ood_test_dataset = ConcatDataset([ood_test1_dataset, ood_test2_dataset])
 
