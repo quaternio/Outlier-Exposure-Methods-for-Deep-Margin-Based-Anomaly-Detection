@@ -1,4 +1,5 @@
 import numpy as np
+import copy
 
 import torch
 import torch.nn as nn
@@ -53,6 +54,10 @@ class LargeMarginLoss:
         
         self.use_approximation = use_approximation
         self.loss_type = loss_type
+        self.discriminant_output = None
+
+    def get_discriminant(self):
+        return self.discriminant_output
 
     def __call__(self, logits, onehot_labels, feature_maps):
         """Getting Large Margin loss
@@ -80,7 +85,7 @@ class LargeMarginLoss:
         diff_prob = correct_prob - topk_prob
         
         loss = torch.empty(0, device=logits.device)
-        for feature_map in feature_maps:
+        for i, feature_map in enumerate(feature_maps):
             diff_grad = torch.stack([_get_grad(diff_prob[:, i], feature_map) for i in range(self.top_k)],
                                     dim=1)
             diff_gradnorm = torch.norm(diff_grad, p=self.dual_norm, dim=2)
@@ -89,6 +94,10 @@ class LargeMarginLoss:
                 diff_gradnorm.detach_()
                 
             dist_to_boundary = diff_prob / (diff_gradnorm + self.eps)
+
+            # Record the output layer distances to the decision boundary
+            if i == len(feature_maps)-1:
+                self.discriminant_output = dist_to_boundary
             
             if self.loss_type == "worst_top_k":
                 dist_to_boundary, _ = dist_to_boundary.min(dim=1)
