@@ -31,7 +31,9 @@ def train_lm(model, train_loader, optimizer, epoch, lm, num_classes, id_label_ma
                 epoch, batch_idx * len(data), len(train_loader.dataset),
                 100. * batch_idx / len(train_loader), loss.item()))
 
-
+############
+# Baseline #
+############
 def train_ce(model, train_loader, optimizer, epoch, id_label_map, device):
     model.train()
     for batch_idx, (data, target) in enumerate(train_loader):
@@ -41,6 +43,10 @@ def train_ce(model, train_loader, optimizer, epoch, id_label_map, device):
         model.clear_features()
 
         loss = F.cross_entropy(output, target)
+
+        # Logging
+        wandb.log({"loss": loss})
+        wandb.watch(model)
         
         loss.backward()
         optimizer.step()
@@ -143,6 +149,7 @@ def train_lm_ks(model, lm, id_loader, ood_loader, optimizer, epoch, id_label_map
         loss = lm(output, one_hot, features)
 
         wandb.log({"loss": loss})
+        wandb.watch(model)
 
         loss.backward()
         optimizer.step()
@@ -175,6 +182,7 @@ def train_lm_ls(model, lm, id_loader, ood_loader, optimizer, epoch, id_label_map
         loss = lm(output, one_hot, features)
 
         wandb.log({"loss": loss})
+        wandb.watch(model)
 
         loss.backward()
         optimizer.step()
@@ -191,26 +199,26 @@ def train_lm_ls(model, lm, id_loader, ood_loader, optimizer, epoch, id_label_map
 # Testing  #
 ############
 
-def test_ce(model, test_loader):
-    model.eval()
-    correct = 0
-    with torch.no_grad(): 
-        for data, target in test_loader:
-            data, target = data.to(device), target.to(device)
-            output, *_ = model(data)
-            pred = output.argmax(dim=1, keepdim=True) # get the index of the max log-probability
-            _, idx = output.max(dim=1)
-            correct += (idx == target).sum().item()
+# def test_ce(model, test_loader):
+#     model.eval()
+#     correct = 0
+#     with torch.no_grad(): 
+#         for data, target in test_loader:
+#             data, target = data.to(device), target.to(device)
+#             output, *_ = model(data)
+#             pred = output.argmax(dim=1, keepdim=True) # get the index of the max log-probability
+#             _, idx = output.max(dim=1)
+#             correct += (idx == target).sum().item()
 
-            # Clear the computed features
-            model.clear_features()
+#             # Clear the computed features
+#             model.clear_features()
 
-    accuracy = 100. * correct / len(test_loader.dataset)
-    print('Test set: Accuracy: {}/{} ({:.0f}%)'.format(
-        correct, len(test_loader.dataset), accuracy))
-    print('Test Set: AUROC: {}\n'.format(AUROC))
+#     accuracy = 100. * correct / len(test_loader.dataset)
+#     print('Test set: Accuracy: {}/{} ({:.0f}%)'.format(
+#         correct, len(test_loader.dataset), accuracy))
+#     print('Test Set: AUROC: {}\n'.format(AUROC))
 
-    wandb.log({"accuracy": accuracy})
+#     wandb.log({"accuracy": accuracy})
 
 # This works as a test function for our baseline
 def test_ce_ls(model, id_loader, ood_loader, device):
@@ -250,17 +258,15 @@ def test_ce_ls(model, id_loader, ood_loader, device):
     
     AUROC = roc_auc_score(anom_labels, anom_scores)
 
-    wandb.log({"AUROC": AUROC})
-
     accuracy = 100. * correct / len(id_loader.dataset)
     print('Test set: Accuracy: {}/{} ({:.0f}%)'.format(
         correct, len(id_loader.dataset), accuracy))
     print('Test Set: AUROC: {}\n'.format(AUROC))
 
-    wandb.log({"ID Accuracy": accuracy})
+    return accuracy, AUROC
 
 
-def test_ce_ks(model, id_loader, ood_loader, device):
+def test_ce_ks(model, epoch, id_loader, ood_loader, device):
     # For KS, do confusion matrix
     model.eval()
     correct = 0
@@ -322,28 +328,26 @@ def test_ce_ks(model, id_loader, ood_loader, device):
     fp_count = skl_conf_matrix[0,1]
     fn_count = skl_conf_matrix[1,0]
     tp_count = skl_conf_matrix[1,1]
-    wandb.log({"Eval True Negatives per Epoch": tn_count})
-    wandb.log({"Eval False Positives per Epoch": fp_count})
-    wandb.log({"Eval False Negatives per Epoch": fn_count})
-    wandb.log({"Eval True Positives per Epoch": tp_count})
+    wandb.log({"Eval True Negatives per Epoch": tn_count}, step=epoch)
+    wandb.log({"Eval False Positives per Epoch": fp_count}, step=epoch)
+    wandb.log({"Eval False Negatives per Epoch": fn_count}, step=epoch)
+    wandb.log({"Eval True Positives per Epoch": tp_count}, step=epoch)
     detection_conf_matrix = wandb.plot.confusion_matrix(y_true=anom_labels, preds=anom_pred)
-    wandb.log({"Detection Confusion Matrix": detection_conf_matrix})
+    wandb.log({"Detection Confusion Matrix": detection_conf_matrix}, step=epoch)
 
     conf_matrix = wandb.plot.confusion_matrix(y_true=targets, preds=pred)
-    wandb.log({"Confusion Matrix": conf_matrix})
+    wandb.log({"Confusion Matrix": conf_matrix}, step=epoch)
 
     AUROC = roc_auc_score(anom_labels, anom_scores)
-    wandb.log({"AUROC": AUROC})
 
     accuracy = 100. * correct / len(id_loader.dataset)
     print('Test set: Accuracy: {}/{} ({:.0f}%)'.format(
         correct, len(id_loader.dataset), accuracy))
     print('Test Set: AUROC: {}\n'.format(AUROC))
 
-    wandb.log({"ID Accuracy": accuracy})
+    return accuracy, AUROC
 
-# TODO
-# WIP
+
 def test_lm_ls(model, lm, id_loader, ood_loader, device):
     model.eval()
     correct = 0
@@ -361,14 +365,6 @@ def test_lm_ls(model, lm, id_loader, ood_loader, device):
         id_one_hot = torch.zeros(len(id_target), num_classes).scatter_(1, id_target.unsqueeze(1), 1.).float()
         ood_one_hot = (1/id_one_hot.shape[1])*torch.ones((len(ood_target), id_one_hot.shape[1])).to(device)
         id_one_hot, ood_one_hot = id_one_hot.to(device), ood_one_hot.to(device)
-        # one_hot = torch.vstack((id_one_hot, ood_one_hot))
-        # one_hot = one_hot.cuda()
-        # optimizer.zero_grad()
-        # model.clear_features()
-        # output, features = model(data)
-        # for feature in features:
-        #     feature.retain_grad()
-        # loss = lm(output, one_hot, features)
 
         id_data, id_target   = id_data.to(device), id_target.to(device)
         ood_data, ood_target = ood_data.to(device), ood_target.to(device)
@@ -438,33 +434,17 @@ def test_lm_ls(model, lm, id_loader, ood_loader, device):
     pred = np.ndarray.flatten(pred)
     targets = torch.hstack(target_sequence).cpu().detach().numpy()
 
-    # names = ["nominal", "anomaly"]
-    # skl_conf_matrix = confusion_matrix(anom_labels, anom_pred)
-    # tn_count = skl_conf_matrix[0,0]
-    # fp_count = skl_conf_matrix[0,1]
-    # fn_count = skl_conf_matrix[1,0]
-    # tp_count = skl_conf_matrix[1,1]
-    # wandb.log({"Eval True Negatives per Epoch": tn_count})
-    # wandb.log({"Eval False Positives per Epoch": fp_count})
-    # wandb.log({"Eval False Negatives per Epoch": fn_count})
-    # wandb.log({"Eval True Positives per Epoch": tp_count})
-    # detection_conf_matrix = wandb.plot.confusion_matrix(y_true=anom_labels, preds=anom_pred, class_names=names)
-    # wandb.log({"Detection Confusion Matrix": detection_conf_matrix})
-
-    # conf_matrix = wandb.plot.confusion_matrix(y_true=targets, preds=pred)
-    # wandb.log({"Confusion Matrix": conf_matrix})
-
     AUROC = roc_auc_score(anom_labels, anom_scores)
-    wandb.log({"AUROC": AUROC})
 
     accuracy = 100. * correct / len(id_loader.dataset)
     print('Test set: Accuracy: {}/{} ({:.0f}%)'.format(
         correct, len(id_loader.dataset), accuracy))
     print('Test Set: AUROC: {}\n'.format(AUROC))
 
-    wandb.log({"ID Accuracy": accuracy})
+    return accuracy, AUROC
 
-def test_lm_ks(model, id_loader, ood_loader, device):
+
+def test_lm_ks(model, epoch, id_loader, ood_loader, device):
     model.eval()
     correct = 0
     anomaly_index = 10
@@ -526,22 +506,21 @@ def test_lm_ks(model, id_loader, ood_loader, device):
     fp_count = skl_conf_matrix[0,1]
     fn_count = skl_conf_matrix[1,0]
     tp_count = skl_conf_matrix[1,1]
-    wandb.log({"Eval True Negatives per Epoch": tn_count})
-    wandb.log({"Eval False Positives per Epoch": fp_count})
-    wandb.log({"Eval False Negatives per Epoch": fn_count})
-    wandb.log({"Eval True Positives per Epoch": tp_count})
+    wandb.log({"Eval True Negatives per Epoch": tn_count}, step=epoch)
+    wandb.log({"Eval False Positives per Epoch": fp_count}, step=epoch)
+    wandb.log({"Eval False Negatives per Epoch": fn_count}, step=epoch)
+    wandb.log({"Eval True Positives per Epoch": tp_count}, step=epoch)
     detection_conf_matrix = wandb.plot.confusion_matrix(y_true=anom_labels, preds=anom_pred, class_names=names)
-    wandb.log({"Detection Confusion Matrix": detection_conf_matrix})
+    wandb.log({"Detection Confusion Matrix": detection_conf_matrix}, step=epoch)
 
     conf_matrix = wandb.plot.confusion_matrix(y_true=targets, preds=pred)
-    wandb.log({"Confusion Matrix": conf_matrix})
+    wandb.log({"Confusion Matrix": conf_matrix}, step=epoch)
 
     AUROC = roc_auc_score(anom_labels, anom_scores)
-    wandb.log({"AUROC": AUROC})
 
     accuracy = 100. * correct / len(id_loader.dataset)
     print('Test set: Accuracy: {}/{} ({:.0f}%)'.format(
         correct, len(id_loader.dataset), accuracy))
     print('Test Set: AUROC: {}\n'.format(AUROC))
 
-    wandb.log({"ID Accuracy": accuracy})
+    return accuracy, AUROC

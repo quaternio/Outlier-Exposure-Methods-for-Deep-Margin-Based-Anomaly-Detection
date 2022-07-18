@@ -19,7 +19,7 @@ import argparse
 from data import build_split_datasets
 import pickle as pkl
 from random_split_generator import FourWayClassSplit
-from train_eval import train_ce_ks, train_ce_ls, train_lm_ls, train_lm_ks, test_ce_ks, test_ce_ls, test_lm_ks, test_lm_ls
+from train_eval import train_ce, train_ce_ks, train_ce_ls, train_lm_ls, train_lm_ks, test_ce_ks, test_ce_ls, test_lm_ks, test_lm_ls
 from torch.utils.data import ConcatDataset
 
 def test(model, test_loader):
@@ -163,13 +163,13 @@ def main():
 
     parser = argparse.ArgumentParser()
     parser.add_argument("-a", "--architecture", type=str,
-                        help="Which architecture to use", default="resnet18")
+                        help="Which architecture to use", default="efficientnet_b1")
     parser.add_argument("-p", "--pretrained", action="store_true")
     parser.add_argument("-b", "--baseline", action="store_true")
     parser.add_argument("-l", "--loss", type=str, 
                         help="Which loss function to use ('CE' or 'margin')", default="CE")
     parser.add_argument("-d", "--detection_type", type=str, 
-                        help="Which type of outlier exposure to use ('KS' or 'LS')", default="LS")
+                        help="Which type of outlier exposure to use ('KS' or 'LS')", default="KS")
     parser.add_argument("-t", "--test", action="store_true", 
                         help="Indicates that we wish to test instead of validate model.")
     parser.add_argument("-o", "--optimizer", type=str, default="SGD")
@@ -177,9 +177,11 @@ def main():
     parser.add_argument("-m", "--momentum", type=float, default=0.9)
     parser.add_argument("--batch_size", type=int, default=256)
     parser.add_argument("-s", "--split", type=int, default=0)
-    parser.add_argument("-e", "--num_epochs", type=int, default=50)
+    parser.add_argument("-e", "--num_epochs", type=int, default=20)
     parser.add_argument("--top_k", type=int, default=10)
     parser.add_argument("--dist_norm", type=str, default="2")
+    parser.add_argument("--gamma", type=int, default=10000)
+    parser.add_argument("--alpha_factor", type=int, default=4)
     # TODO: Finish adding arguments; start instrumenting for weights and biases sweep
     args = parser.parse_args()
 
@@ -188,6 +190,9 @@ def main():
 
     # Setup Weights and Biases and specify hyperparameters
     wandb.init(project="Thomas-Masters-Project")
+
+    wandb.define_metric("ID_Accuracy", summary="max")
+    wandb.define_metric("AUROC", summary="max")
 
     wandb.config = {
         "learning_rate": args.learning_rate,
@@ -240,8 +245,8 @@ def main():
     #################
     if args.loss == "margin":
         lm = LargeMarginLoss(
-            gamma=10000,
-            alpha_factor=4,
+            gamma=args.gamma, #10000,
+            alpha_factor=args.alpha_factor, #4,
             top_k=args.top_k,
             dist_norm=dist_norm
         )
@@ -266,18 +271,20 @@ def main():
         raise NotImplementedError("Specified Optimizer Not Supported")
 
     for i in range(0, epochs):
-        wandb.log({"epoch": i})
         # start_time = time.time()
-        if args.loss == "margin" and args.detection_type == "LS":
-            train_lm_ls(net, lm, id_train_loader, ood_train_loader, optim, i, id_label_map, device)
-        elif args.loss == "margin" and args.detection_type == "KS":
-            train_lm_ks(net, lm, id_train_loader, ood_train_loader, optim, i, id_label_map, device)
-        elif args.loss == "CE" and args.detection_type == "LS":
-            train_ce_ls(net, id_train_loader, ood_train_loader, optim, i, id_label_map, device)
-        elif args.loss == "CE" and args.detection_type == "KS":
-            train_ce_ks(net, id_train_loader, ood_train_loader, optim, i, id_label_map, device)
+        if args.baseline:
+            train_ce(net, id_train_loader, optim, i, id_label_map, device)
         else:
-            raise NotImplementedError("Training for the specified loss-function outlier exposure combination is not supported")
+            if args.loss == "margin" and args.detection_type == "LS":
+                train_lm_ls(net, lm, id_train_loader, ood_train_loader, optim, i, id_label_map, device)
+            elif args.loss == "margin" and args.detection_type == "KS":
+                train_lm_ks(net, lm, id_train_loader, ood_train_loader, optim, i, id_label_map, device)
+            elif args.loss == "CE" and args.detection_type == "LS":
+                train_ce_ls(net, id_train_loader, ood_train_loader, optim, i, id_label_map, device)
+            elif args.loss == "CE" and args.detection_type == "KS":
+                train_ce_ks(net, id_train_loader, ood_train_loader, optim, i, id_label_map, device)
+            else:
+                raise NotImplementedError("Training for the specified loss-function outlier exposure combination is not supported")
 
         # end_time = time.time()
         # print('Epoch {} took {} seconds to complete'.format(i+1, end_time-start_time))
@@ -288,16 +295,22 @@ def main():
             id_eval_loader  = id_test_loader
             ood_eval_loader = ood_test_loader
 
-        if args.loss == "margin" and args.detection_type == "LS":
-            test_lm_ls(net, lm, id_eval_loader, ood_eval_loader, device)
-        elif args.loss == "margin" and args.detection_type == "KS":
-            test_lm_ks(net, id_eval_loader, ood_eval_loader, device)
-        elif args.loss == "CE" and args.detection_type == "LS":
-            test_ce_ls(net, id_eval_loader, ood_eval_loader, device)
-        elif args.loss == "CE" and args.detection_type == "KS":
-            test_ce_ks(net, id_eval_loader, ood_eval_loader, device)
+        if args.baseline:
+            acc, auc = test_ce_ls(net, id_eval_loader, ood_eval_loader, device)
         else:
-            raise NotImplementedError("Testing for the specified loss-fucntion outlier exposure combination is not supported")
+            if args.loss == "margin" and args.detection_type == "LS":
+                acc, auc = test_lm_ls(net, lm, id_eval_loader, ood_eval_loader, device)
+            elif args.loss == "margin" and args.detection_type == "KS":
+                acc, auc = test_lm_ks(net, i, id_eval_loader, ood_eval_loader, device)
+            elif args.loss == "CE" and args.detection_type == "LS":
+                acc, auc = test_ce_ls(net, id_eval_loader, ood_eval_loader, device)
+            elif args.loss == "CE" and args.detection_type == "KS":
+                acc, auc = test_ce_ks(net, i, id_eval_loader, ood_eval_loader, device)
+            else:
+                raise NotImplementedError("Testing for the specified loss-fucntion outlier exposure combination is not supported")
+
+        metric_combined = 0.5 * (acc/100.) + 0.5 * auc
+        wandb.log({"ID_Accuracy": acc, "AUROC": auc, "metric_combined": metric_combined, "epoch": i})
 
 if __name__ == '__main__':
     main()
