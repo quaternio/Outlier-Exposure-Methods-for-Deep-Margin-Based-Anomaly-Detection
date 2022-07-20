@@ -193,6 +193,37 @@ def train_lm_ls(model, lm, id_loader, ood_loader, optimizer, epoch, id_label_map
                 100. * 2 * batch_idx / (len(id_loader)+len(ood_loader)), loss.item()))
 
 
+# def train_lm_ls_experimental(model, lm, id_loader, ood_loader, optimizer, epoch, id_label_map, device):
+#     # Suppresses discriminants instead of logits
+#     model.train()
+#     num_classes = 10
+#     for batch_idx, ((id_data, id_target), (ood_data, ood_target)) in enumerate(zip(id_loader, ood_loader)):
+#         data = torch.vstack((id_data, ood_data))
+#         data = data.to(device)
+#         id_one_hot = torch.zeros(len(id_target), num_classes).scatter_(1, id_target.unsqueeze(1), 1.).float()
+#         ood_one_hot = (1/id_one_hot.shape[1])*torch.ones((len(ood_target), id_one_hot.shape[1])).to(device)
+#         id_one_hot, ood_one_hot = id_one_hot.to(device), ood_one_hot.to(device)
+#         one_hot = torch.vstack((id_one_hot, ood_one_hot))
+#         one_hot = one_hot.cuda()
+#         optimizer.zero_grad()
+#         model.clear_features()
+#         output, features = model(data)
+#         for feature in features:
+#             feature.retain_grad()
+
+#         loss = lm(output, one_hot, features)
+
+#         wandb.log({"loss": loss})
+#         wandb.watch(model)
+
+#         loss.backward()
+#         optimizer.step()
+        
+#         if batch_idx % 8 == 0:
+#             print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
+#                 epoch, 2 * batch_idx * len(id_data), len(id_loader.dataset)+len(ood_loader.dataset),
+#                 100. * 2 * batch_idx / (len(id_loader)+len(ood_loader)), loss.item()))
+
 
 
 ############

@@ -177,16 +177,13 @@ def main():
     parser.add_argument("-m", "--momentum", type=float, default=0.9)
     parser.add_argument("--batch_size", type=int, default=256)
     parser.add_argument("-s", "--split", type=int, default=0)
-    parser.add_argument("-e", "--num_epochs", type=int, default=20)
+    parser.add_argument("-e", "--num_epochs", type=int, default=50)
     parser.add_argument("--top_k", type=int, default=10)
     parser.add_argument("--dist_norm", type=str, default="2")
     parser.add_argument("--gamma", type=int, default=10000)
     parser.add_argument("--alpha_factor", type=int, default=4)
     # TODO: Finish adding arguments; start instrumenting for weights and biases sweep
     args = parser.parse_args()
-
-    # if args.architecture == 'resnet50':
-    #   print('Holy cow, you're using a resnet50!')
 
     # Setup Weights and Biases and specify hyperparameters
     wandb.init(project="Thomas-Masters-Project")
