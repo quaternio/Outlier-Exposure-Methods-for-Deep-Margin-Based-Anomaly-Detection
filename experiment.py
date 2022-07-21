@@ -159,8 +159,6 @@ def learn(args):
     pass
 
 def main():
-    torch.manual_seed(0)
-
     parser = argparse.ArgumentParser()
     parser.add_argument("-a", "--architecture", type=str,
                         help="Which architecture to use", default="efficientnet_b1")
@@ -182,8 +180,11 @@ def main():
     parser.add_argument("--dist_norm", type=str, default="2")
     parser.add_argument("--gamma", type=int, default=10000)
     parser.add_argument("--alpha_factor", type=int, default=4)
-    # TODO: Finish adding arguments; start instrumenting for weights and biases sweep
+    parser.add_argument("--seed", type=int, default=0)
     args = parser.parse_args()
+
+    # Make sure that random seed 0 is used with split 0
+    torch.manual_seed(args.seed)
 
     # Setup Weights and Biases and specify hyperparameters
     wandb.init(project="Thomas-Masters-Project")
