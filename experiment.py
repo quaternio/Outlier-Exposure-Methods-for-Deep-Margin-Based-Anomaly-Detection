@@ -21,6 +21,7 @@ import pickle as pkl
 from random_split_generator import FourWayClassSplit
 from train_eval import train_ce, train_ce_ks, train_ce_ls, train_lm_ls, train_lm_ks, test_ce_ks, test_ce_ls, test_lm_ks, test_lm_ls
 from torch.utils.data import ConcatDataset
+import datetime
 
 def test(model, test_loader):
     model.eval()
@@ -159,6 +160,8 @@ def learn(args):
     pass
 
 def main():
+    now = datetime.datetime.now()
+
     parser = argparse.ArgumentParser()
     parser.add_argument("-a", "--architecture", type=str,
                         help="Which architecture to use", default="efficientnet_b1")
@@ -171,23 +174,31 @@ def main():
     parser.add_argument("-t", "--test", action="store_true", 
                         help="Indicates that we wish to test instead of validate model.")
     parser.add_argument("-o", "--optimizer", type=str, default="SGD")
-    parser.add_argument("--learning_rate", type=float, default=0.003)
-    parser.add_argument("-m", "--momentum", type=float, default=0.9)
+    parser.add_argument("--learning_rate", type=float, default=0.0542)
+    parser.add_argument("-m", "--momentum", type=float, default=0.242)
     parser.add_argument("--batch_size", type=int, default=256)
     parser.add_argument("-s", "--split", type=int, default=0)
-    parser.add_argument("-e", "--num_epochs", type=int, default=50)
+    parser.add_argument("-e", "--num_epochs", type=int, default=300)
     parser.add_argument("--top_k", type=int, default=10)
     parser.add_argument("--dist_norm", type=str, default="2")
-    parser.add_argument("--gamma", type=int, default=10000)
-    parser.add_argument("--alpha_factor", type=int, default=4)
+    parser.add_argument("--gamma", type=int, default=19600)
+    parser.add_argument("--alpha_factor", type=int, default=7)
     parser.add_argument("--seed", type=int, default=0)
+    parser.add_argument("--oe_test", action="store_true",
+                        help="Indicates type of testing we want to do. If true, test outliers will be OE classes.")
     args = parser.parse_args()
 
     # Make sure that random seed 0 is used with split 0
     torch.manual_seed(args.seed)
 
     # Setup Weights and Biases and specify hyperparameters
-    wandb.init(project="Thomas-Masters-Project")
+    test_method = "oe_test" if args.oe_test else "new_class_test"
+    if args.baseline:
+        project_name = "TN_Masters_Proj_Baseline_{}".format(test_method)
+    else:
+        project_name = "TN_Masters_Proj_{}_{}_{}".format(args.detection_type, args.loss, test_method)
+    
+    wandb.init(project=project_name)
 
     wandb.define_metric("ID_Accuracy", summary="max")
     wandb.define_metric("AUROC", summary="max")
@@ -225,7 +236,7 @@ def main():
 
     # Right now, hardcoded to use CIFAR-100, with hardcoded splits
     # defined and generated in random_split_generator.py
-    id_data, ood_data = build_split_datasets(split)
+    id_data, ood_data = build_split_datasets(split, args.oe_test)
 
     id_train_data, id_val_data, id_test_data    = id_data
     ood_train_data, ood_val_data, ood_test_data = ood_data
@@ -309,6 +320,20 @@ def main():
 
         metric_combined = 0.5 * (acc/100.) + 0.5 * auc
         wandb.log({"ID_Accuracy": acc, "AUROC": auc, "metric_combined": metric_combined, "epoch": i})
+
+        # Save Model
+        directory = "{}_{}_{}".format(args.loss, args.detection_type, test_method)
+        torch.save({
+            'epoch': i,
+            'model_state_dict': net.state_dict(),
+            'optimizer_state_dict': optim.state_dict(),
+            'auc': auc,
+            'id_accuracy': acc,
+            'split': args.split,
+            'test_method': test_method,
+            'loss': args.loss,
+            'detection_type': args.detection_type,
+        }, 'models/{}/day_{}_{}_time_{}_{}_split_{}_epoch_{}.pth'.format(directory, now.month, now.day, now.hour, now.minute, args.split, i))
 
 if __name__ == '__main__':
     main()

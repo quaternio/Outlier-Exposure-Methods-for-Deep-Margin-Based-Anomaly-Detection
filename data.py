@@ -43,7 +43,7 @@ from random_split_generator import FourWayClassSplit
 from torch.utils.data import ConcatDataset
 from torch.utils.data import random_split
 
-def build_split_datasets(split):
+def build_split_datasets(split: int, oe_test: bool):
     assert(split < 5 and split >= 0)
     with open('id-ood-splits/split{}.pkl'.format(split), 'rb') as f:
         id_ood_split = pkl.load(f) # Type is adtools.data.FourWayClassSplit
@@ -55,7 +55,7 @@ def build_split_datasets(split):
     test_dataset = torchutil.data.CIFAR100(root = 'data', train = False, download = True)
 
     id_train_dataset, ood_train_dataset, ood_val1_dataset, ood_test1_dataset = id_ood_split.split_dataset(train_dataset)
-    id_test_dataset, _, ood_val2_dataset, ood_test2_dataset = id_ood_split.split_dataset(test_dataset)
+    id_test_dataset, oe_test_dataset, ood_val2_dataset, ood_test2_dataset = id_ood_split.split_dataset(test_dataset)
 
     # Map ID labels and OOD labels to [0, 1, 2, ...]
     id_train_dataset = torchutil.data.TransformingDataset(
@@ -84,6 +84,17 @@ def build_split_datasets(split):
         ]),
         target_transform = torchutil.data.LabelMappingTransform(
             label_list = id_ood_split.id_labels()
+        )
+    )
+
+    oe_test_dataset = torchutil.data.TransformingDataset(
+        oe_test_dataset,
+        transform=transforms.Compose([
+            transforms.ToTensor(),
+            transforms.Normalize(mean=[0.485,0.456,0.406], std=[0.229, 0.224, 0.225])
+        ]),
+        target_transform = torchutil.data.LabelMappingTransform(
+            label_list = id_ood_split.ood_train_labels()
         )
     )
 
@@ -143,6 +154,9 @@ def build_split_datasets(split):
     )
 
     ood_val_dataset  = ConcatDataset([ood_val1_dataset, ood_val2_dataset])
-    ood_test_dataset = ConcatDataset([ood_test1_dataset, ood_test2_dataset])
+    if oe_test:
+        ood_test_dataset = oe_test_dataset
+    else:
+        ood_test_dataset = ConcatDataset([ood_test1_dataset, ood_test2_dataset])
 
     return (id_train_dataset, id_val_dataset, id_test_dataset), (ood_train_dataset, ood_val_dataset, ood_test_dataset)
