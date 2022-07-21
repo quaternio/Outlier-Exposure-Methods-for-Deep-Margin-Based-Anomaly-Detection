@@ -322,18 +322,31 @@ def main():
         wandb.log({"ID_Accuracy": acc, "AUROC": auc, "metric_combined": metric_combined, "epoch": i})
 
         # Save Model
-        directory = "{}_{}_{}".format(args.loss, args.detection_type, test_method)
-        torch.save({
-            'epoch': i,
-            'model_state_dict': net.state_dict(),
-            'optimizer_state_dict': optim.state_dict(),
-            'auc': auc,
-            'id_accuracy': acc,
-            'split': args.split,
-            'test_method': test_method,
-            'loss': args.loss,
-            'detection_type': args.detection_type,
-        }, 'models/{}/day_{}_{}_time_{}_{}_split_{}_epoch_{}.pth'.format(directory, now.month, now.day, now.hour, now.minute, args.split, i))
+        if i % 5:
+            if args.baseline:
+                directory = "baseline_{}".format(test_method)
+                torch.save({
+                    'epoch': i,
+                    'model_state_dict': net.state_dict(),
+                    'optimizer_state_dict': optim.state_dict(),
+                    'auc': auc,
+                    'id_accuracy': acc,
+                    'split': args.split,
+                    'test_method': test_method,
+                }, 'models/{}/day_{}_{}_time_{}_{}_split_{}_epoch_{}.pth'.format(directory, now.month, now.day, now.hour, now.minute, args.split, i))
+            else:
+                directory = "{}_{}_{}".format(args.loss, args.detection_type, test_method)
+                torch.save({
+                    'epoch': i,
+                    'model_state_dict': net.state_dict(),
+                    'optimizer_state_dict': optim.state_dict(),
+                    'auc': auc,
+                    'id_accuracy': acc,
+                    'split': args.split,
+                    'test_method': test_method,
+                    'loss': args.loss,
+                    'detection_type': args.detection_type,
+                }, 'models/{}/day_{}_{}_time_{}_{}_split_{}_epoch_{}.pth'.format(directory, now.month, now.day, now.hour, now.minute, args.split, i))
 
 if __name__ == '__main__':
     main()
