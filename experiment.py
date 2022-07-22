@@ -279,19 +279,20 @@ def main():
     else:
         raise NotImplementedError("Specified Optimizer Not Supported")
 
+    metric_combined_running_max = 0
     for i in range(0, epochs):
         # start_time = time.time()
         if args.baseline:
             train_ce(net, id_train_loader, optim, i, id_label_map, device)
         else:
             if args.loss == "margin" and args.detection_type == "LS":
-                train_lm_ls(net, lm, id_train_loader, ood_train_loader, optim, i, id_label_map, device)
+                loss = train_lm_ls(net, lm, id_train_loader, ood_train_loader, optim, i, id_label_map, device)
             elif args.loss == "margin" and args.detection_type == "KS":
-                train_lm_ks(net, lm, id_train_loader, ood_train_loader, optim, i, id_label_map, device)
+                loss = train_lm_ks(net, lm, id_train_loader, ood_train_loader, optim, i, id_label_map, device)
             elif args.loss == "CE" and args.detection_type == "LS":
-                train_ce_ls(net, id_train_loader, ood_train_loader, optim, i, id_label_map, device)
+                loss = train_ce_ls(net, id_train_loader, ood_train_loader, optim, i, id_label_map, device)
             elif args.loss == "CE" and args.detection_type == "KS":
-                train_ce_ks(net, id_train_loader, ood_train_loader, optim, i, id_label_map, device)
+                loss = train_ce_ks(net, id_train_loader, ood_train_loader, optim, i, id_label_map, device)
             else:
                 raise NotImplementedError("Training for the specified loss-function outlier exposure combination is not supported")
 
@@ -319,10 +320,13 @@ def main():
                 raise NotImplementedError("Testing for the specified loss-fucntion outlier exposure combination is not supported")
 
         metric_combined = 0.5 * (acc/100.) + 0.5 * auc
-        wandb.log({"ID_Accuracy": acc, "AUROC": auc, "metric_combined": metric_combined, "epoch": i})
+        wandb.log({"loss": loss, "ID_Accuracy": acc, "AUROC": auc, "metric_combined": metric_combined, "epoch": i})
 
         # Save Model
-        if i % 5:
+        if i % 5 == 0 or metric_combined > metric_combined_running_max:
+            if metric_combined > metric_combined_running_max:
+                metric_combined_running_max = metric_combined
+                
             if args.baseline:
                 directory = "baseline_{}".format(test_method)
                 torch.save({

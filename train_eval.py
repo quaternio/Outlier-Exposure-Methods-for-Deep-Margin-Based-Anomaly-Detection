@@ -45,8 +45,8 @@ def train_ce(model, train_loader, optimizer, epoch, id_label_map, device):
         loss = F.cross_entropy(output, target)
 
         # Logging
-        wandb.log({"loss": loss})
-        wandb.watch(model)
+        # wandb.log({"loss": loss})
+        # wandb.watch(model)
         
         loss.backward()
         optimizer.step()
@@ -55,6 +55,7 @@ def train_ce(model, train_loader, optimizer, epoch, id_label_map, device):
                 epoch, batch_idx * len(data), len(train_loader.dataset),
                 100. * batch_idx / len(train_loader), loss.item()))
 
+    return loss
 
 #############################################
 # Anomaly Scoring and Detection Performance #
@@ -90,8 +91,8 @@ def train_ce_ls(model, id_loader, ood_loader, optimizer, epoch, id_label_map, de
         loss = F.cross_entropy(id_logits, id_target) + F.cross_entropy(ood_logits, ood_target)
         
         # Logging
-        wandb.log({"loss": loss})
-        wandb.watch(model)
+        #wandb.log({"loss": loss})
+        #wandb.watch(model)
 
         loss.backward()
         optimizer.step()
@@ -100,6 +101,7 @@ def train_ce_ls(model, id_loader, ood_loader, optimizer, epoch, id_label_map, de
                 epoch, 2 * batch_idx * len(id_data), len(id_loader.dataset)+len(ood_loader.dataset),
                 100. * 2 * batch_idx / (len(id_loader)+len(ood_loader)), loss.item()))
 
+    return loss
 
 def train_ce_ks(model, id_loader, ood_loader, optimizer, epoch, id_label_map, device):
     model.train()
@@ -116,8 +118,8 @@ def train_ce_ks(model, id_loader, ood_loader, optimizer, epoch, id_label_map, de
         loss = F.cross_entropy(id_logits, id_target) + F.cross_entropy(ood_logits, ood_target)
         
         # Logging
-        wandb.log({"loss": loss})
-        wandb.watch(model)
+        # wandb.log({"loss": loss})
+        # wandb.watch(model)
 
         loss.backward()
         optimizer.step()
@@ -126,6 +128,7 @@ def train_ce_ks(model, id_loader, ood_loader, optimizer, epoch, id_label_map, de
                 epoch, 2 * batch_idx * len(id_data), len(id_loader.dataset)+len(ood_loader.dataset),
                 100. * 2 * batch_idx / (len(id_loader)+len(ood_loader)), loss.item()))
 
+    return loss
 
 def train_lm_ks(model, lm, id_loader, ood_loader, optimizer, epoch, id_label_map, device):
     # For these lm training functions, compute nominal loss and clear features
@@ -148,8 +151,8 @@ def train_lm_ks(model, lm, id_loader, ood_loader, optimizer, epoch, id_label_map
 
         loss = lm(output, one_hot, features)
 
-        wandb.log({"loss": loss})
-        wandb.watch(model)
+        #wandb.log({"loss": loss})
+        #wandb.watch(model)
 
         loss.backward()
         optimizer.step()
@@ -159,6 +162,7 @@ def train_lm_ks(model, lm, id_loader, ood_loader, optimizer, epoch, id_label_map
                 epoch, 2 * batch_idx * len(id_data), len(id_loader.dataset)+len(ood_loader.dataset),
                 100. * 2 * batch_idx / (len(id_loader)+len(ood_loader)), loss.item()))
 
+    return loss
 
 def train_lm_ls(model, lm, id_loader, ood_loader, optimizer, epoch, id_label_map, device):
     # For these lm training functions, compute nominal loss and clear features
@@ -181,8 +185,8 @@ def train_lm_ls(model, lm, id_loader, ood_loader, optimizer, epoch, id_label_map
 
         loss = lm(output, one_hot, features)
 
-        wandb.log({"loss": loss})
-        wandb.watch(model)
+        #wandb.log({"loss": loss})
+        #wandb.watch(model)
 
         loss.backward()
         optimizer.step()
@@ -192,6 +196,7 @@ def train_lm_ls(model, lm, id_loader, ood_loader, optimizer, epoch, id_label_map
                 epoch, 2 * batch_idx * len(id_data), len(id_loader.dataset)+len(ood_loader.dataset),
                 100. * 2 * batch_idx / (len(id_loader)+len(ood_loader)), loss.item()))
 
+    return loss
 
 # def train_lm_ls_experimental(model, lm, id_loader, ood_loader, optimizer, epoch, id_label_map, device):
 #     # Suppresses discriminants instead of logits
