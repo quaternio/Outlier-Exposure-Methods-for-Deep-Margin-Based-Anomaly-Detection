@@ -283,7 +283,7 @@ def main():
     for i in range(0, epochs):
         # start_time = time.time()
         if args.baseline:
-            train_ce(net, id_train_loader, optim, i, id_label_map, device)
+            loss = train_ce(net, id_train_loader, optim, i, id_label_map, device)
         else:
             if args.loss == "margin" and args.detection_type == "LS":
                 loss = train_lm_ls(net, lm, id_train_loader, ood_train_loader, optim, i, id_label_map, device)
@@ -326,7 +326,7 @@ def main():
         if i % 5 == 0 or metric_combined > metric_combined_running_max:
             if metric_combined > metric_combined_running_max:
                 metric_combined_running_max = metric_combined
-                
+
             if args.baseline:
                 directory = "baseline_{}".format(test_method)
                 torch.save({
