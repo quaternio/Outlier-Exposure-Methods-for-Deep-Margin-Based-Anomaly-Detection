@@ -1,0 +1,27 @@
+program: experiment.py
+method: bayes
+metric:
+  name: metric_combined
+  goal: maximize
+parameters:
+  learning_rate:
+    min: 0.0001
+    max: 0.1
+  momentum:
+    min: 0.0001
+    max: 0.999
+  clip:
+    min: 0.3
+    max: 1000
+  gamma:
+    min: 0
+    max: 20000
+  alpha_factor:
+    min: 1
+    max: 9
+  batch_size:
+    min: 16
+    max: 256
+  beta:
+    min: 0.0001
+    max: 10

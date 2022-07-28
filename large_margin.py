@@ -95,6 +95,8 @@ class LargeMarginLoss:
                 
             dist_to_boundary = diff_prob / (diff_gradnorm + self.eps)
 
+            # print("dist_to_boundary: {}".format(dist_to_boundary))
+
             # Record the output layer distances to the decision boundary
             if i == len(feature_maps)-1:
                 self.discriminant_output = dist_to_boundary
@@ -107,5 +109,6 @@ class LargeMarginLoss:
             loss_layer = _max_with_relu(dist_to_boundary, self.dist_lower)
             loss_layer = _max_with_relu(0, self.dist_upper - loss_layer) - self.dist_upper
             loss = torch.cat([loss, loss_layer])
+            
         return loss.mean()
     
