@@ -168,9 +168,9 @@ def main():
     parser.add_argument("-p", "--pretrained", action="store_true")
     parser.add_argument("-b", "--baseline", action="store_true")
     parser.add_argument("-l", "--loss", type=str, 
-                        help="Which loss function to use ('CE' or 'margin')", default="CE")
+                        help="Which loss function to use ('CE' or 'margin')", default="margin")
     parser.add_argument("-d", "--detection_type", type=str, 
-                        help="Which type of outlier exposure to use ('KS' or 'LS')", default="KS")
+                        help="Which type of outlier exposure to use ('KS' or 'LS')", default="LS")
     parser.add_argument("-t", "--test", action="store_true", 
                         help="Indicates that we wish to test instead of validate model.")
     parser.add_argument("-o", "--optimizer", type=str, default="SGD")
@@ -179,13 +179,14 @@ def main():
     parser.add_argument("--batch_size", type=int, default=256)
     parser.add_argument("-s", "--split", type=int, default=0)
     parser.add_argument("-e", "--num_epochs", type=int, default=300)
-    parser.add_argument("--top_k", type=int, default=10)
+    parser.add_argument("--top_k", type=int, default=1)
     parser.add_argument("--dist_norm", type=str, default="2")
     parser.add_argument("--gamma", type=int, default=19600)
     parser.add_argument("--alpha_factor", type=int, default=7)
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--oe_test", action="store_true",
                         help="Indicates type of testing we want to do. If true, test outliers will be OE classes.")
+    parser.add_argument("--epsilon", type=float, default=0.3)
     args = parser.parse_args()
 
     # Make sure that random seed 0 is used with split 0
@@ -243,11 +244,11 @@ def main():
 
     # Constructing Dataloaders
     id_train_loader = data.DataLoader(id_train_data, batch_size=batch_size, shuffle=True, drop_last=True)
-    id_val_loader   = data.DataLoader(id_val_data, batch_size=batch_size, shuffle=True, drop_last=True)
-    id_test_loader   = data.DataLoader(id_test_data, batch_size=batch_size, shuffle=True, drop_last=True)
+    id_val_loader   = data.DataLoader(id_val_data, batch_size=batch_size, shuffle=True, drop_last=False)
+    id_test_loader   = data.DataLoader(id_test_data, batch_size=batch_size, shuffle=True, drop_last=False)
     ood_train_loader   = data.DataLoader(ood_train_data, batch_size=batch_size, shuffle=True, drop_last=True)
-    ood_val_loader   = data.DataLoader(ood_val_data, batch_size=batch_size, shuffle=True, drop_last=True)
-    ood_test_loader   = data.DataLoader(ood_test_data, batch_size=batch_size, shuffle=True, drop_last=True)
+    ood_val_loader   = data.DataLoader(ood_val_data, batch_size=batch_size, shuffle=True, drop_last=False)
+    ood_test_loader   = data.DataLoader(ood_test_data, batch_size=batch_size, shuffle=True, drop_last=False)
 
     #################
     # LOSS FUNCTION #
@@ -257,7 +258,8 @@ def main():
             gamma=args.gamma, #10000,
             alpha_factor=args.alpha_factor, #4,
             top_k=args.top_k,
-            dist_norm=dist_norm
+            dist_norm=dist_norm,
+            epsilon=args.epsilon
         )
 
     if args.detection_type == "LS" or args.baseline:
@@ -309,18 +311,22 @@ def main():
             acc, auc = test_ce_ls(net, id_eval_loader, ood_eval_loader, device)
         else:
             if args.loss == "margin" and args.detection_type == "LS":
-                acc, auc = test_lm_ls(net, lm, id_eval_loader, ood_eval_loader, device)
+                acc, margin_auc, max_logit_auc = test_lm_ls(net, args.top_k, id_eval_loader, ood_eval_loader, device)
             elif args.loss == "margin" and args.detection_type == "KS":
-                acc, auc = test_lm_ks(net, i, id_eval_loader, ood_eval_loader, device)
+                acc, auc = test_lm_ks(net, id_eval_loader, ood_eval_loader, device)
             elif args.loss == "CE" and args.detection_type == "LS":
                 acc, auc = test_ce_ls(net, id_eval_loader, ood_eval_loader, device)
             elif args.loss == "CE" and args.detection_type == "KS":
-                acc, auc = test_ce_ks(net, i, id_eval_loader, ood_eval_loader, device)
+                acc, auc = test_ce_ks(net, id_eval_loader, ood_eval_loader, device)
             else:
                 raise NotImplementedError("Testing for the specified loss-fucntion outlier exposure combination is not supported")
 
-        metric_combined = 0.5 * (acc/100.) + 0.5 * auc
-        wandb.log({"loss": loss, "ID_Accuracy": acc, "AUROC": auc, "metric_combined": metric_combined, "epoch": i})
+        if args.loss == "margin" and args.detection_type == "LS":
+            metric_combined = 0.5 * (acc/100.) + 0.5 * margin_auc
+            wandb.log({"loss": loss, "ID_Accuracy": acc, "Margin AUROC": margin_auc, "Max-Logit AUROC": max_logit_auc, "metric_combined": metric_combined, "epoch": i})
+        else:
+            metric_combined = 0.5 * (acc/100.) + 0.5 * auc
+            wandb.log({"loss": loss, "ID_Accuracy": acc, "AUROC": auc, "metric_combined": metric_combined, "epoch": i})
 
         # Save Model
         # if i % 5 == 0 or metric_combined > metric_combined_running_max:
@@ -340,17 +346,31 @@ def main():
             }, 'models/{}/day_{}_{}_time_{}_{}_split_{}_epoch_{}.pth'.format(directory, now.month, now.day, now.hour, now.minute, args.split, i))
         else:
             directory = "val_{}_{}_{}".format(args.loss, args.detection_type, test_method)
-            torch.save({
-                'epoch': i,
-                'model_state_dict': net.state_dict(),
-                'optimizer_state_dict': optim.state_dict(),
-                'auc': auc,
-                'id_accuracy': acc,
-                'split': args.split,
-                'test_method': test_method,
-                'loss': args.loss,
-                'detection_type': args.detection_type,
-            }, 'models/{}/day_{}_{}_time_{}_{}_split_{}_epoch_{}.pth'.format(directory, now.month, now.day, now.hour, now.minute, args.split, i))
+            if args.loss == "margin" and args.detection_type == "LS":   
+                torch.save({
+                    'epoch': i,
+                    'model_state_dict': net.state_dict(),
+                    'optimizer_state_dict': optim.state_dict(),
+                    'margin_auc': margin_auc,
+                    'max_logit_auc': max_logit_auc,
+                    'id_accuracy': acc,
+                    'split': args.split,
+                    'test_method': test_method,
+                    'loss': args.loss,
+                    'detection_type': args.detection_type,
+                }, 'models/{}/day_{}_{}_time_{}_{}_split_{}_epoch_{}.pth'.format(directory, now.month, now.day, now.hour, now.minute, args.split, i))
+            else:
+                torch.save({
+                    'epoch': i,
+                    'model_state_dict': net.state_dict(),
+                    'optimizer_state_dict': optim.state_dict(),
+                    'auc': auc,
+                    'id_accuracy': acc,
+                    'split': args.split,
+                    'test_method': test_method,
+                    'loss': args.loss,
+                    'detection_type': args.detection_type,
+                }, 'models/{}/day_{}_{}_time_{}_{}_split_{}_epoch_{}.pth'.format(directory, now.month, now.day, now.hour, now.minute, args.split, i))
 
 if __name__ == '__main__':
     main()

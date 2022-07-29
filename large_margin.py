@@ -54,10 +54,13 @@ class LargeMarginLoss:
         
         self.use_approximation = use_approximation
         self.loss_type = loss_type
-        self.discriminant_output = None
+        #self.layerwise_discriminant_output = []
 
-    def get_discriminant(self):
-        return self.discriminant_output
+    # def get_layerwise_discriminant(self):
+    #     return torch.hstack(self.layerwise_discriminant_output)
+
+    # def clear_layerwise_discriminant(self):
+    #     self.layerwise_discriminant_output = []
 
     def __call__(self, logits, onehot_labels, feature_maps):
         """Getting Large Margin loss
@@ -97,10 +100,11 @@ class LargeMarginLoss:
 
             # print("dist_to_boundary: {}".format(dist_to_boundary))
 
-            # Record the output layer distances to the decision boundary
-            if i == len(feature_maps)-1:
-                self.discriminant_output = dist_to_boundary
-            
+            # # Record the output layer distances to the decision boundary
+            # if i == len(feature_maps)-1:
+            #     self.discriminant_output = dist_to_boundary
+            ##self.layerwise_discriminant_output.append(dist_to_boundary)
+
             if self.loss_type == "worst_top_k":
                 dist_to_boundary, _ = dist_to_boundary.min(dim=1)
             elif self.loss_type == "avg_top_k":
