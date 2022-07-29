@@ -194,7 +194,7 @@ def main():
     # Setup Weights and Biases and specify hyperparameters
     test_method = "oe_test" if args.oe_test else "new_class_test"
     if args.baseline:
-        project_name = "TN_Masters_Proj_Baseline_Val_{}".format(test_method)
+        project_name = "TN_Masters_Proj_Fixed_Baseline_Val_{}".format(test_method)
     else:
         project_name = "TN_Masters_Proj_Val_{}_{}_{}".format(args.detection_type, args.loss, test_method)
     
@@ -260,7 +260,7 @@ def main():
             dist_norm=dist_norm
         )
 
-    if args.detection_type == "LS":
+    if args.detection_type == "LS" or args.baseline:
         net = FeatureExtractor(net_type, num_training_classes)
     elif args.detection_type == "KS":
         # Include a kitchen sink class

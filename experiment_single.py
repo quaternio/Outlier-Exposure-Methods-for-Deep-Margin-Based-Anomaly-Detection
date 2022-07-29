@@ -431,7 +431,10 @@ def main():
     # Setup Weights and Biases and specify hyperparameters
     test_method = "oe_test" if args.oe_test else "new_class_test"
     if args.baseline:
-        project_name = "Single_TN_Masters_Proj_Baseline_Val_{}".format(test_method)
+        if args.margin_baseline:
+            project_name = "Single_TN_Masters_Proj_margin_Baseline_Val_{}".format(test_method)
+        else:
+            project_name = "Single_TN_Masters_Proj_Baseline_Val_{}".format(test_method)
     else:
         project_name = "Single_TN_Masters_Proj_Val_{}_{}_{}".format(args.detection_type, args.loss, test_method)
     
