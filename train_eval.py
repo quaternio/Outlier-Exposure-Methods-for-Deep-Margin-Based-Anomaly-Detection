@@ -106,6 +106,8 @@ def train_ce_ls(model, id_loader, ood_loader, optimizer, epoch, id_label_map, de
 
 def train_ce_ks(model, id_loader, ood_loader, optimizer, epoch, id_label_map, device):
     model.train()
+    correct = 0
+    total = 0
     for batch_idx, ((id_data, id_target), (ood_data, ood_target)) in enumerate(zip(id_loader, ood_loader)):
         ood_target = 10 * torch.ones_like(ood_target)
         id_data, id_target  = id_data.to(device), id_target.to(device)
@@ -117,25 +119,29 @@ def train_ce_ks(model, id_loader, ood_loader, optimizer, epoch, id_label_map, de
         model.clear_features()
 
         loss = F.cross_entropy(id_logits, id_target) + F.cross_entropy(ood_logits, ood_target)
-        
-        # Logging
-        # wandb.log({"loss": loss})
-        # wandb.watch(model)
 
         loss.backward()
         optimizer.step()
+
+        # Computing Accuracy
+        _, id_idx = id_logits[:,0:10].max(dim=1)
+        correct += (id_idx == id_target).sum().item()
+        total += id_data.shape[0]
+
         if batch_idx % 8 == 0:
             print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
                 epoch, 2 * batch_idx * len(id_data), len(id_loader.dataset)+len(ood_loader.dataset),
                 100. * 2 * batch_idx / (len(id_loader)+len(ood_loader)), loss.item()))
 
-    return loss
+    return loss, correct / total
 
 def train_lm_ks(model, lm, id_loader, ood_loader, optimizer, epoch, id_label_map, device):
     # For these lm training functions, compute nominal loss and clear features
     # before computing anomaly loss and clearing features. This will ensure 
     model.train()
     num_classes = 11
+    correct = 0
+    total = 0
     for batch_idx, ((id_data, id_target), (ood_data, ood_target)) in enumerate(zip(id_loader, ood_loader)):
         ood_target = 10 * torch.ones_like(ood_target)
         data = torch.vstack((id_data, ood_data))
@@ -157,48 +163,116 @@ def train_lm_ks(model, lm, id_loader, ood_loader, optimizer, epoch, id_label_map
 
         loss.backward()
         optimizer.step()
+
+        # Computing Accuracy
+        _, id_idx = output[0:id_data.shape[0],0:10].max(dim=1)
+        correct += (id_idx == id_target).sum().item()
+        total += id_data.shape[0]
         
         if batch_idx % 8 == 0:
             print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
                 epoch, 2 * batch_idx * len(id_data), len(id_loader.dataset)+len(ood_loader.dataset),
                 100. * 2 * batch_idx / (len(id_loader)+len(ood_loader)), loss.item()))
 
-    return loss
+    return loss, correct / total
 
-def train_lm_ls(model, lm, id_loader, ood_loader, optimizer, epoch, id_label_map, device):
+
+def train_distance(logits, features, top_k, eps, device):
+    prob = F.softmax(logits, dim=1)
+
+    max_indices = torch.argmax(prob, dim=1)
+    pseudo_correct_prob, _ = torch.max(prob, dim=1, keepdim=True)
+
+    pseudo_other_prob = torch.zeros(prob.shape).to(device)
+    pseudo_other_prob.copy_(prob)
+    pseudo_other_prob[torch.arange(prob.shape[0]),max_indices] = 0.
+
+    # Grabs the next most likely class probabilities
+    if top_k > 1:
+        topk_prob, _ = pseudo_other_prob.topk(top_k, dim=1)
+    else:
+        topk_prob, _ = pseudo_other_prob.max(dim=1, keepdim=True)
+
+    pseudo_diff_prob = pseudo_correct_prob - topk_prob
+
+    layerwise_discriminant_output = []
+
+    for i, feature_map in enumerate(features):
+        diff_grad = torch.stack([_get_grad(pseudo_diff_prob[:, i], feature_map) for i in range(top_k)],
+                            dim=1)
+        diff_gradnorm = torch.norm(diff_grad, p=2, dim=2)
+        diff_gradnorm.detach_()
+        distance = pseudo_diff_prob / (diff_gradnorm + eps)
+
+        layerwise_discriminant_output.append(distance)
+
+    return torch.hstack(layerwise_discriminant_output)
+
+
+def min_diff_train_distance(logits, features, top_k, eps, device):
+    prob = F.softmax(logits, dim=1)
+
+    max_indices = torch.argmax(prob, dim=1)
+    pseudo_correct_prob, _ = torch.max(prob, dim=1, keepdim=True)
+
+    pseudo_other_prob = torch.zeros(prob.shape).to(device)
+    pseudo_other_prob.copy_(prob)
+    pseudo_other_prob[torch.arange(prob.shape[0]),max_indices] = 0.
+
+    # Grabs the least likely class probabilities
+    topk_prob, _ = pseudo_other_prob.min(dim=1, keepdim=True)
+
+    pseudo_diff_prob = pseudo_correct_prob - topk_prob
+
+    layerwise_discriminant_output = []
+
+    for i, feature_map in enumerate(features):
+        diff_grad = torch.stack([_get_grad(pseudo_diff_prob[:, i], feature_map) for i in range(top_k)],
+                            dim=1)
+        diff_gradnorm = torch.norm(diff_grad, p=2, dim=2)
+        diff_gradnorm.detach_()
+        distance = pseudo_diff_prob / (diff_gradnorm + eps)
+
+        layerwise_discriminant_output.append(distance)
+
+    return torch.hstack(layerwise_discriminant_output)
+
+
+def train_lm_ls(model, lm, top_k, eps, id_loader, ood_loader, optimizer, epoch, id_label_map, device):
     # For these lm training functions, compute nominal loss and clear features
     # before computing anomaly loss and clearing features. This will ensure 
+
     model.train()
     num_classes = 10
     for batch_idx, ((id_data, id_target), (ood_data, ood_target)) in enumerate(zip(id_loader, ood_loader)):
-        data = torch.vstack((id_data, ood_data))
-        data = data.to(device)
+        id_data, ood_data = id_data.to(device), ood_data.to(device)
         id_one_hot = torch.zeros(len(id_target), num_classes).scatter_(1, id_target.unsqueeze(1), 1.).float()
-        ood_one_hot = (1/id_one_hot.shape[1])*torch.ones((len(ood_target), id_one_hot.shape[1])).to(device)
-        id_one_hot, ood_one_hot = id_one_hot.to(device), ood_one_hot.to(device)
-        one_hot = torch.vstack((id_one_hot, ood_one_hot))
-        one_hot = one_hot.cuda()
+        id_one_hot= id_one_hot.to(device)
         optimizer.zero_grad()
         model.clear_features()
-        output, features = model(data)
-        for feature in features:
+        id_output, id_features = model(id_data)
+        for feature in id_features:
             feature.retain_grad()
 
         # Batch-Averaged
-        margin_loss = lm(output, one_hot, features)
+        id_margin_loss = lm(id_output, id_one_hot, id_features)
 
-        # Note that this distances tensor will have dimension (num_examples x (number of layers*top_k)).
-        distances = lm.get_layerwise_discriminant()
-        assert(distances.shape[0]==one_hot.shape[0])
+        # Compute OOD output and features
+        model.clear_features()
+        ood_output, ood_features = model(ood_data)
+        for feature in ood_features:
+            feature.retain_grad()
+
+        # Note that this distances tensor will have dimension (num_ood_examples x (number of layers*top_k)).
+        distances = train_distance(ood_output, ood_features, top_k, eps, device)
+        assert(distances.shape[0]==ood_data.shape[0])
 
         squared_distances = torch.square(distances)
 
         # Batch-averaged square distance
-        ls_loss = (1./distances.shape[0]) * torch.sum(squared_distances)
+        ood_ls_loss = (1./distances.shape[0]) * torch.sum(squared_distances)
 
-        loss = margin_loss + ls_loss
-
-        lm.clear_layerwise_discriminant()
+        loss = id_margin_loss + ood_ls_loss
 
         loss.backward()
         optimizer.step()
@@ -244,6 +318,32 @@ def test_distance(logits, features, top_k, device):
 
     return distance
 
+def min_diff_test_distance(logits, features, top_k, device):
+    eps = 1e-8
+    prob = F.softmax(logits, dim=1)
+
+    max_indices = torch.argmax(prob, dim=1)
+    pseudo_correct_prob, _ = torch.max(prob, dim=1, keepdim=True)
+
+    pseudo_other_prob = torch.zeros(prob.shape).to(device)
+    pseudo_other_prob.copy_(prob)
+    pseudo_other_prob[torch.arange(prob.shape[0]),max_indices] = 0.
+
+    # Grabs the next least likely class probability
+    topk_prob, _ = pseudo_other_prob.min(dim=1, keepdim=True)
+
+    pseudo_diff_prob = pseudo_correct_prob - topk_prob
+
+    for i, feature_map in enumerate(features):
+        if i == len(features)-1:
+            diff_grad = torch.stack([_get_grad(pseudo_diff_prob[:, i], feature_map) for i in range(top_k)],
+                                dim=1)
+            diff_gradnorm = torch.norm(diff_grad, p=2, dim=2)
+            diff_gradnorm.detach_()
+            distance = pseudo_diff_prob / (diff_gradnorm + eps)
+
+    return distance
+
 
 def test_lm_ls(model, top_k, id_loader, ood_loader, device):
     model.eval()
@@ -271,6 +371,7 @@ def test_lm_ls(model, top_k, id_loader, ood_loader, device):
         # ID Distance Computation #
         ###########################
         raw_id_distance = test_distance(id_output, id_features, top_k, device)
+        #print("id distances: {}".format(raw_id_distance))
         id_distance = torch.abs(raw_id_distance)
 
         # Compute number of correctly classified id instances
@@ -288,6 +389,7 @@ def test_lm_ls(model, top_k, id_loader, ood_loader, device):
         # Compute anomaly scores
         # Use discriminant function to compute id_scores
         # id_distance = torch.abs(id_distance)
+        assert(id_distance.shape[1]==top_k)
         margin_id_scores, _ = torch.max(-1 * id_distance, dim=1)
         max_logit_id_scores, _ = torch.max(id_output, dim=1)
         max_logit_id_scores = -1 * max_logit_id_scores
@@ -301,8 +403,8 @@ def test_lm_ls(model, top_k, id_loader, ood_loader, device):
 
     for batch_idx, (ood_data, ood_target) in enumerate(ood_loader):
         ood_target = anomaly_index * torch.ones_like(ood_target)
-        ood_one_hot = (1/id_one_hot.shape[1])*torch.ones((len(ood_target), id_one_hot.shape[1])).to(device)
-        ood_one_hot = ood_one_hot.to(device)
+        # ood_one_hot = (1/id_one_hot.shape[1])*torch.ones((len(ood_target), id_one_hot.shape[1])).to(device)
+        # ood_one_hot = ood_one_hot.to(device)
         ood_data, ood_target = ood_data.to(device), ood_target.to(device)
         model.clear_features()
         ood_output, ood_features = model(ood_data)
@@ -313,6 +415,7 @@ def test_lm_ls(model, top_k, id_loader, ood_loader, device):
         # OOD Distance Computation #
         ############################
         raw_ood_distance = test_distance(ood_output, ood_features, top_k, device)
+        #print("raw ood distances: {}".format(raw_ood_distance))
         ood_distance = torch.abs(raw_ood_distance)
 
         ood_pred   = ood_output.argmax(dim=1, keepdim=True)
@@ -413,7 +516,8 @@ def test_ce_ks(model, id_loader, ood_loader, device):
     anomaly_index = 10
     anom_pred = []
     anom_labels = []
-    anom_score_sequence = []
+    ks_logit_anom_score_sequence = []
+    max_id_logit_anom_score_sequence = []
     pred_sequence = []
     target_sequence = []
     with torch.no_grad(): 
@@ -423,10 +527,12 @@ def test_ce_ks(model, id_loader, ood_loader, device):
 
             # Compute number of correctly classified id instances
             id_pred   = id_output.argmax(dim=1, keepdim=True) # get the index of the max log-probability
-            _, id_idx = id_output.max(dim=1)
-            correct += (id_idx == id_target).sum().item()
             id_anom_pred = [1. if id_pred[i] == anomaly_index else 0. for i in range(len(id_pred))]
 
+            # Computing Accuracy
+            _, id_idx = id_output[:,0:anomaly_index].max(dim=1)
+            correct += (id_idx == id_target).sum().item()
+            
             # Concatenate the list (order matters here)
             id_batch_anom_pred = id_anom_pred
             anom_pred = anom_pred + id_batch_anom_pred
@@ -435,8 +541,13 @@ def test_ce_ks(model, id_loader, ood_loader, device):
             target_sequence.append(id_target)
 
             # Compute anomaly scores
-            id_scores = id_output[:,anomaly_index]
-            anom_score_sequence.append(id_scores)
+            ks_logit_id_scores = id_output[:,anomaly_index]
+            ks_logit_anom_score_sequence.append(ks_logit_id_scores)
+
+            pos_max_id_logit_scores, _ = torch.max(id_output[:,0:anomaly_index], dim=1)
+            max_id_logit_scores = -1 * pos_max_id_logit_scores
+            max_id_logit_anom_score_sequence.append(max_id_logit_scores)
+
             for i in range(len(id_target)):
                 # 0 indicates "nominal"
                 anom_labels.append(0.)
@@ -453,27 +564,35 @@ def test_ce_ks(model, id_loader, ood_loader, device):
             target_sequence.append(ood_target)
             
             # Compute anomaly scores
-            ood_scores = ood_output[:,anomaly_index]
-            anom_score_sequence.append(ood_scores)
+            ks_logit_ood_scores = ood_output[:,anomaly_index]
+            ks_logit_anom_score_sequence.append(ks_logit_ood_scores)
+
+            pos_max_id_logit_scores, _ = torch.max(ood_output[:,0:anomaly_index], dim=1)
+            max_id_logit_scores = -1 * pos_max_id_logit_scores
+            max_id_logit_anom_score_sequence.append(max_id_logit_scores)
+
             for i in range(len(ood_target)):
                 # 1 indicates "anomaly"
                 anom_labels.append(1.)
 
-    anom_scores = torch.hstack(anom_score_sequence).cpu().numpy()
+    ks_logit_anom_scores = torch.hstack(ks_logit_anom_score_sequence).cpu().numpy()
+    max_id_logit_anom_scores = torch.hstack(max_id_logit_anom_score_sequence).cpu().numpy()
     anom_labels = np.asarray(anom_labels)
     anom_pred = np.asarray(anom_pred)
     pred = torch.vstack(pred_sequence).cpu().numpy()
     pred = np.ndarray.flatten(pred)
     targets = torch.hstack(target_sequence).cpu().numpy()
 
-    AUROC = roc_auc_score(anom_labels, anom_scores)
+    ks_logit_AUROC = roc_auc_score(anom_labels, ks_logit_anom_scores)
+    max_id_logit_AUROC = roc_auc_score(anom_labels, max_id_logit_anom_scores)
 
     accuracy = 100. * correct / len(id_loader.dataset)
     print('Test set: Accuracy: {}/{} ({:.0f}%)'.format(
         correct, len(id_loader.dataset), accuracy))
-    print('Test Set: AUROC: {}\n'.format(AUROC))
+    print('Test Set: ks logit AUROC: {}\n'.format(ks_logit_AUROC))
+    print('Test Set: max id logit AUROC: {}\n'.format(max_id_logit_AUROC))
 
-    return accuracy, AUROC
+    return accuracy, ks_logit_AUROC, max_id_logit_AUROC
 
 
 # TODO: Verify Correct
@@ -483,7 +602,8 @@ def test_lm_ks(model, id_loader, ood_loader, device):
     anomaly_index = 10
     anom_pred = []
     anom_labels = []
-    anom_score_sequence = []
+    ks_logit_anom_score_sequence = []
+    max_id_logit_anom_score_sequence = []
     pred_sequence = []
     target_sequence = []
     with torch.no_grad(): 
@@ -493,7 +613,7 @@ def test_lm_ks(model, id_loader, ood_loader, device):
             
             # Compute number of correctly classified id instances
             id_pred   = id_output.argmax(dim=1, keepdim=True) # get the index of the max log-probability
-            _, id_idx = id_output.max(dim=1)
+            _, id_idx = id_output[0:anomaly_index].max(dim=1)
             correct += (id_idx == id_target).sum().item()
             id_anom_pred = [1. if id_pred[i] == anomaly_index else 0. for i in range(len(id_pred))]
 
@@ -504,8 +624,14 @@ def test_lm_ks(model, id_loader, ood_loader, device):
             pred_sequence.append(id_pred)
             target_sequence.append(id_target)
 
-            id_scores = id_output[:,anomaly_index]
-            anom_score_sequence.append(id_scores)
+            # Compute Anom. Scores
+            ks_logit_id_scores = id_output[:,anomaly_index]
+            ks_logit_anom_score_sequence.append(ks_logit_id_scores)
+
+            pos_max_id_logit_scores, _ = torch.max(id_output[:,0:anomaly_index], dim=1)
+            max_id_logit_scores = -1 * pos_max_id_logit_scores
+            max_id_logit_anom_score_sequence.append(max_id_logit_scores)
+
             for i in range(len(id_target)):
                 # 0 indicates "nominal"
                 anom_labels.append(0.)
@@ -521,24 +647,32 @@ def test_lm_ks(model, id_loader, ood_loader, device):
             target_sequence.append(ood_target)
 
             # Compute anomaly scores
-            ood_scores = ood_output[:,anomaly_index]
-            anom_score_sequence.append(ood_scores)
+            ks_logit_ood_scores = ood_output[:,anomaly_index]
+            ks_logit_anom_score_sequence.append(ks_logit_ood_scores)
+
+            pos_max_id_logit_scores, _ = torch.max(ood_output[:,0:anomaly_index], dim=1)
+            max_id_logit_scores = -1 * pos_max_id_logit_scores
+            max_id_logit_anom_score_sequence.append(max_id_logit_scores)
+
             for i in range(len(ood_target)):
                 # 1 indicates "anomaly"
                 anom_labels.append(1.)
 
-    anom_scores = torch.hstack(anom_score_sequence).cpu().numpy()
+    ks_logit_anom_scores = torch.hstack(ks_logit_anom_score_sequence).cpu().numpy()
+    max_id_logit_anom_scores = torch.hstack(max_id_logit_anom_score_sequence).cpu().numpy()
     anom_labels = np.asarray(anom_labels)
     anom_pred = np.asarray(anom_pred)
     pred = torch.vstack(pred_sequence).cpu().numpy()
     pred = np.ndarray.flatten(pred)
     targets = torch.hstack(target_sequence).cpu().numpy()
 
-    AUROC = roc_auc_score(anom_labels, anom_scores)
+    ks_logit_AUROC = roc_auc_score(anom_labels, ks_logit_anom_scores)
+    max_id_logit_AUROC = roc_auc_score(anom_labels, max_id_logit_anom_scores)
 
     accuracy = 100. * correct / len(id_loader.dataset)
     print('Test set: Accuracy: {}/{} ({:.0f}%)'.format(
         correct, len(id_loader.dataset), accuracy))
-    print('Test Set: AUROC: {}\n'.format(AUROC))
+    print('Test Set: ks logit AUROC: {}\n'.format(ks_logit_AUROC))
+    print('Test Set: max id logit AUROC: {}\n'.format(max_id_logit_AUROC))
 
-    return accuracy, AUROC
+    return accuracy, ks_logit_AUROC, max_id_logit_AUROC

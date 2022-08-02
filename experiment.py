@@ -168,9 +168,9 @@ def main():
     parser.add_argument("-p", "--pretrained", action="store_true")
     parser.add_argument("-b", "--baseline", action="store_true")
     parser.add_argument("-l", "--loss", type=str, 
-                        help="Which loss function to use ('CE' or 'margin')", default="margin")
+                        help="Which loss function to use ('CE' or 'margin')", default="CE")
     parser.add_argument("-d", "--detection_type", type=str, 
-                        help="Which type of outlier exposure to use ('KS' or 'LS')", default="LS")
+                        help="Which type of outlier exposure to use ('KS' or 'LS')", default="KS")
     parser.add_argument("-t", "--test", action="store_true", 
                         help="Indicates that we wish to test instead of validate model.")
     parser.add_argument("-o", "--optimizer", type=str, default="SGD")
@@ -288,13 +288,14 @@ def main():
             loss = train_ce(net, id_train_loader, optim, i, id_label_map, device)
         else:
             if args.loss == "margin" and args.detection_type == "LS":
-                loss = train_lm_ls(net, lm, id_train_loader, ood_train_loader, optim, i, id_label_map, device)
+                #loss = train_lm_ls(net, lm, args.top_k, args.epsilon, id_train_loader, ood_train_loader, optim, i, id_label_map, device)
+                loss = train_lm_ls(net, lm, args.top_k, args.epsilon, id_train_loader, ood_train_loader, optim, i, id_label_map, device)
             elif args.loss == "margin" and args.detection_type == "KS":
-                loss = train_lm_ks(net, lm, id_train_loader, ood_train_loader, optim, i, id_label_map, device)
+                loss, train_acc = train_lm_ks(net, lm, id_train_loader, ood_train_loader, optim, i, id_label_map, device)
             elif args.loss == "CE" and args.detection_type == "LS":
                 loss = train_ce_ls(net, id_train_loader, ood_train_loader, optim, i, id_label_map, device)
             elif args.loss == "CE" and args.detection_type == "KS":
-                loss = train_ce_ks(net, id_train_loader, ood_train_loader, optim, i, id_label_map, device)
+                loss, train_acc = train_ce_ks(net, id_train_loader, ood_train_loader, optim, i, id_label_map, device)
             else:
                 raise NotImplementedError("Training for the specified loss-function outlier exposure combination is not supported")
 
@@ -313,17 +314,20 @@ def main():
             if args.loss == "margin" and args.detection_type == "LS":
                 acc, margin_auc, max_logit_auc = test_lm_ls(net, args.top_k, id_eval_loader, ood_eval_loader, device)
             elif args.loss == "margin" and args.detection_type == "KS":
-                acc, auc = test_lm_ks(net, id_eval_loader, ood_eval_loader, device)
+                acc, ks_logit_auc, max_id_logit_auc = test_lm_ks(net, id_eval_loader, ood_eval_loader, device)
             elif args.loss == "CE" and args.detection_type == "LS":
                 acc, auc = test_ce_ls(net, id_eval_loader, ood_eval_loader, device)
             elif args.loss == "CE" and args.detection_type == "KS":
-                acc, auc = test_ce_ks(net, id_eval_loader, ood_eval_loader, device)
+                acc, ks_logit_auc, max_id_logit_auc = test_ce_ks(net, id_eval_loader, ood_eval_loader, device)
             else:
                 raise NotImplementedError("Testing for the specified loss-fucntion outlier exposure combination is not supported")
 
         if args.loss == "margin" and args.detection_type == "LS":
             metric_combined = 0.5 * (acc/100.) + 0.5 * margin_auc
             wandb.log({"loss": loss, "ID_Accuracy": acc, "Margin AUROC": margin_auc, "Max-Logit AUROC": max_logit_auc, "metric_combined": metric_combined, "epoch": i})
+        elif args.detection_type == "KS":
+            metric_combined = 0.5 * (acc/100.) + 0.5 * auc
+            wandb.log({"Train_Loss": loss, "Train_Accuracy": train_acc, "ID_Accuracy": acc, "KS_Logit_AUROC": ks_logit_auc, "Max_ID_Logit_AUROC": max_id_logit_auc, "metric_combined": metric_combined, "epoch": i})
         else:
             metric_combined = 0.5 * (acc/100.) + 0.5 * auc
             wandb.log({"loss": loss, "ID_Accuracy": acc, "AUROC": auc, "metric_combined": metric_combined, "epoch": i})
