@@ -96,7 +96,7 @@ def _init_efficientnet_b1(output_size, pretrained = False, features_hook = None)
     model.classifier = torch.nn.Linear(1280, output_size)
     if features_hook is not None:
         for name, module in model.named_modules():
-            if name in ['features.0', 'features.1', 'features.2', 'features.3', 'features.4', 'features.5', 'features.6', 'features.7', 'features.8', 'classifier']:
+            if name in ['features.0', 'features.1', 'features.2', 'features.3', 'features.4', 'features.5', 'features.6', 'features.7', 'features.8']: #, 'classifier']:
                 module.register_forward_hook(features_hook)
 
     return model
@@ -289,7 +289,7 @@ def main():
         else:
             if args.loss == "margin" and args.detection_type == "LS":
                 #loss = train_lm_ls(net, lm, args.top_k, args.epsilon, id_train_loader, ood_train_loader, optim, i, id_label_map, device)
-                loss = train_lm_ls(net, lm, args.top_k, args.epsilon, id_train_loader, ood_train_loader, optim, i, id_label_map, device)
+                loss, train_acc = train_lm_ls(net, lm, args.top_k, args.epsilon, id_train_loader, ood_train_loader, optim, i, id_label_map, device)
             elif args.loss == "margin" and args.detection_type == "KS":
                 loss, train_acc = train_lm_ks(net, lm, id_train_loader, ood_train_loader, optim, i, id_label_map, device)
             elif args.loss == "CE" and args.detection_type == "LS":
@@ -324,10 +324,11 @@ def main():
 
         if args.loss == "margin" and args.detection_type == "LS":
             metric_combined = 0.5 * (acc/100.) + 0.5 * margin_auc
-            wandb.log({"loss": loss, "ID_Accuracy": acc, "Margin AUROC": margin_auc, "Max-Logit AUROC": max_logit_auc, "metric_combined": metric_combined, "epoch": i})
+            wandb.log({"Train_Loss": loss, "Train_Accuracy": train_acc, "ID_Accuracy": acc, "Margin AUROC": margin_auc, "Max-Logit AUROC": max_logit_auc, "metric_combined": metric_combined, "epoch": i})
         elif args.detection_type == "KS":
-            metric_combined = 0.5 * (acc/100.) + 0.5 * auc
-            wandb.log({"Train_Loss": loss, "Train_Accuracy": train_acc, "ID_Accuracy": acc, "KS_Logit_AUROC": ks_logit_auc, "Max_ID_Logit_AUROC": max_id_logit_auc, "metric_combined": metric_combined, "epoch": i})
+            metric_combined_ks_logit = 0.5 * (acc/100.) + 0.5 * ks_logit_auc
+            metric_combined_max_id_logit = 0.5 * (acc/100.) + 0.5 * max_id_logit_auc
+            wandb.log({"Train_Loss": loss, "Train_Accuracy": train_acc, "ID_Accuracy": acc, "KS_Logit_AUROC": ks_logit_auc, "Max_ID_Logit_AUROC": max_id_logit_auc, "metric_combined_ks_logit": metric_combined_ks_logit, "metric_combined_max_id_logit": metric_combined_max_id_logit, "epoch": i})
         else:
             metric_combined = 0.5 * (acc/100.) + 0.5 * auc
             wandb.log({"loss": loss, "ID_Accuracy": acc, "AUROC": auc, "metric_combined": metric_combined, "epoch": i})
@@ -357,6 +358,19 @@ def main():
                     'optimizer_state_dict': optim.state_dict(),
                     'margin_auc': margin_auc,
                     'max_logit_auc': max_logit_auc,
+                    'id_accuracy': acc,
+                    'split': args.split,
+                    'test_method': test_method,
+                    'loss': args.loss,
+                    'detection_type': args.detection_type,
+                }, 'models/{}/day_{}_{}_time_{}_{}_split_{}_epoch_{}.pth'.format(directory, now.month, now.day, now.hour, now.minute, args.split, i))
+            elif args.detection_type == "KS":
+                torch.save({
+                    'epoch': i,
+                    'model_state_dict': net.state_dict(),
+                    'optimizer_state_dict': optim.state_dict(),
+                    'ks_logit_auc': ks_logit_auc,
+                    'max_id_logit_auc': max_id_logit_auc,
                     'id_accuracy': acc,
                     'split': args.split,
                     'test_method': test_method,

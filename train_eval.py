@@ -166,6 +166,7 @@ def train_lm_ks(model, lm, id_loader, ood_loader, optimizer, epoch, id_label_map
 
         # Computing Accuracy
         _, id_idx = output[0:id_data.shape[0],0:10].max(dim=1)
+        id_idx, id_target = id_idx.to(device), id_target.to(device)
         correct += (id_idx == id_target).sum().item()
         total += id_data.shape[0]
         
@@ -244,6 +245,8 @@ def train_lm_ls(model, lm, top_k, eps, id_loader, ood_loader, optimizer, epoch, 
 
     model.train()
     num_classes = 10
+    correct = 0
+    total = 0
     for batch_idx, ((id_data, id_target), (ood_data, ood_target)) in enumerate(zip(id_loader, ood_loader)):
         id_data, ood_data = id_data.to(device), ood_data.to(device)
         id_one_hot = torch.zeros(len(id_target), num_classes).scatter_(1, id_target.unsqueeze(1), 1.).float()
@@ -276,13 +279,19 @@ def train_lm_ls(model, lm, top_k, eps, id_loader, ood_loader, optimizer, epoch, 
 
         loss.backward()
         optimizer.step()
+
+        # Computing Accuracy
+        _, id_idx = id_output.max(dim=1)
+        id_idx, id_target = id_idx.to(device), id_target.to(device)
+        correct += (id_idx == id_target).sum().item()
+        total += id_data.shape[0]
         
         if batch_idx % 8 == 0:
             print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
                 epoch, 2 * batch_idx * len(id_data), len(id_loader.dataset)+len(ood_loader.dataset),
                 100. * 2 * batch_idx / (len(id_loader)+len(ood_loader)), loss.item()))
 
-    return loss
+    return loss, correct / total
 
 
 ############
@@ -613,7 +622,9 @@ def test_lm_ks(model, id_loader, ood_loader, device):
             
             # Compute number of correctly classified id instances
             id_pred   = id_output.argmax(dim=1, keepdim=True) # get the index of the max log-probability
-            _, id_idx = id_output[0:anomaly_index].max(dim=1)
+            _, id_idx = id_output[:,0:anomaly_index].max(dim=1)
+            #id_idx = id_idx.to(device)
+            #id_target = id_target.to(device)
             correct += (id_idx == id_target).sum().item()
             id_anom_pred = [1. if id_pred[i] == anomaly_index else 0. for i in range(len(id_pred))]
 
