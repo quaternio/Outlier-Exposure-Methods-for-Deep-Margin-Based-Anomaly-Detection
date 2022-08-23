@@ -185,7 +185,7 @@ def train_distance(logits, features, top_k, eps, device):
     pseudo_correct_prob, _ = torch.max(prob, dim=1, keepdim=True)
 
     pseudo_other_prob = torch.zeros(prob.shape).to(device)
-    pseudo_other_prob.copy_(prob)
+    pseudo_other_prob = prob.clone().detach() #pseudo_other_prob.copy_(prob)
     pseudo_other_prob[torch.arange(prob.shape[0]),max_indices] = 0.
 
     # Grabs the next most likely class probabilities
