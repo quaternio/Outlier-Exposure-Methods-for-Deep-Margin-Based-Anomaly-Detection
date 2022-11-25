@@ -1,4 +1,4 @@
-# Thomas Noel's Master's Degree Project
+# Outlier Exposure Methods for Deep Margin-Based Anomaly Detection
 
 Outlier exposure (OE) has been shown to be an effective method to improve anomaly detection performance at test time [1]. The method presented in [1] uses logit suppression via KL-divergence between the model’s softmax distribution and the uniform distribution. A potential alternative to this method is to aggregate all out-of-distribution instances into a single “outlier class” during training time.
 
