@@ -1,26 +1,7 @@
-# Outlier Exposure Methods for Deep Margin-Based Anomaly Detection
+# Exploring Outlier Exposure Methods for Deep Margin-Based Anomaly Detection
 
-Outlier exposure (OE) has been shown to be an effective method to improve anomaly detection performance at test time [1]. The method presented in [1] uses logit suppression via KL-divergence between the model’s softmax distribution and the uniform distribution. A potential alternative to this method is to aggregate all out-of-distribution instances into a single “outlier class” during training time.
-
-Both of these methods are compatible with a variety of loss functions. Among these, the margin loss [2]  is of interest. We propose a set of experiments considering these outlier exposure methods with cross-entropy and margin losses.
-
-The following is the experiment matrix that we're interested in:
-
-|             | **Cross-Entropy** | **Margin Loss** |
-|:------------|:------------------|:----------------|
-|**Logit Suppression**| | |
-|**Kitchen Sink**| | |
-
-This draws heavily from the paper linked below.
-
-## [[arxiv]](https://arxiv.org/abs/1803.05598) [[Official TF Repo]](https://github.com/google-research/google-research/tree/master/large_margin)
-
-[1]  D. Hendrycks, M. Mazeika, and T. Dietterich, Deep Anomaly Detection with Outlier Exposure. arXiv, 2018. doi: 10.48550/ARXIV.1812.04606.
-
-[2] G. F. Elsayed, D. Krishnan, H. Mobahi, K. Regan, and S. Bengio, Large Margin Deep Networks for Classification. arXiv, 2018. doi: 10.48550/ARXIV.1803.05598.
+In standard training regimes, one assumes that the classes presented to a model are representative of the classes that the model will encounter when it is deployed. In real deployment scenarios, however, a model can sometimes encounter situations or objects that it has never seen. When these scenarios are safety-critical, a model's response to an out-of-distribution (OOD) input can be the difference between success and catastrophic failure. In some cases, one has access to some OOD examples and can exploit these during training to make the model more robust at deployment time. This technique is known as outlier exposure (OE) and has been shown in the literature to improve novelty detection performance. In this project, two OE strategies, one established and one speculative, are explored in two different deployment scenarios: one where OE data are representative of the OOD examples that will be seen during test time and one where they are not. Lastly, an attempt is made to better understand these OE techniques when used in tandem with deep margin-based classifiers, an approach that has not yet appeared in the literature.
 
 <hr>
 
-## Results 
-
-### Coming Soon!
+You can read my Master's paper [here](https://ir.library.oregonstate.edu/concern/graduate_projects/ks65hn11h).
